@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Local Tavern</title>
+    <link rel="stylesheet" href="/static/css/tailwind.css" />
+    <script defer src="/static/js/markdown.js"></script>
+    <script defer src="/static/js/app.js"></script>
+  </head>
+  <body>
+    <div id="appShell" class="app-shell">
+      <aside id="settingsSidebar" class="sidebar">
+        <div class="brand-row">
+          <div class="brand-mark">LT</div>
+          <div class="brand-copy">
+            <h1>Local Tavern</h1>
+            <p id="connectionStatus">Starting</p>
+          </div>
+          <button id="openModelMarket" class="icon-button" type="button" title="Model Marketplace" aria-label="Open model marketplace">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z" />
+              <path d="M12 12 4.5 7.8" />
+              <path d="M12 12v8.3" />
+              <path d="m12 12 7.5-4.2" />
+            </svg>
+          </button>
+          <button id="openCharacterLibrary" class="icon-button" type="button" title="Character Cards" aria-label="Open character cards">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20 21a8 8 0 0 0-16 0" />
+              <path d="M12 13a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z" />
+            </svg>
+          </button>
+          <button id="openLorebookEditor" class="icon-button" type="button" title="Lorebooks" aria-label="Open lorebook editor">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z" />
+              <path d="M9 7h7" />
+              <path d="M9 11h5" />
+            </svg>
+          </button>
+        </div>
+
+        <section class="panel">
+          <div class="panel-title">
+            <h2>Inference Source</h2>
+            <span id="sourceBadge" class="badge badge-local">Local</span>
+          </div>
+          <select id="inferenceSource" class="input">
+            <option value="local">Local Engine Mode</option>
+            <option value="cloud">Cloud API Mode</option>
+          </select>
+        </section>
+
+        <section id="cloudPanel" class="panel hidden">
+          <div class="panel-title">
+            <h2>Cloud API</h2>
+            <span class="badge">Online</span>
+          </div>
+          <label class="field">
+            <span>Provider</span>
+            <select id="cloudProvider" class="input" data-cloud-field>
+              <option value="openai">OpenAI</option>
+              <option value="openrouter">OpenRouter</option>
+              <option value="custom">Custom</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Base URL</span>
+            <input id="baseUrl" class="input" data-cloud-field value="https://api.openai.com/v1" />
+          </label>
+          <label class="field">
+            <span>Model</span>
+            <input id="cloudModel" class="input" data-cloud-field value="gpt-4o-mini" />
+          </label>
+          <label class="field">
+            <span>API Key</span>
+            <input id="apiKey" class="input" data-cloud-field type="password" autocomplete="off" />
+          </label>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title">
+            <h2>Generation</h2>
+          </div>
+          <div class="two-col">
+            <label class="field">
+              <span>Temperature</span>
+              <input id="temperature" class="input" type="number" value="0.7" min="0" max="2" step="0.05" />
+            </label>
+            <label class="field">
+              <span>Top P</span>
+              <input id="topP" class="input" type="number" value="0.9" min="0" max="1" step="0.05" />
+            </label>
+          </div>
+          <label class="field">
+            <span>Max Tokens</span>
+            <input id="maxTokens" class="input" type="number" value="512" min="1" max="8192" />
+          </label>
+        </section>
+
+        <section class="panel panel-grow">
+          <div class="panel-title">
+            <h2>Character</h2>
+            <button id="editCurrentCharacter" class="ghost-button" type="button">Cards</button>
+          </div>
+          <div class="avatar-config">
+            <div id="characterAvatarPreview" class="avatar avatar-large">A</div>
+            <label class="field fill">
+              <span>Name</span>
+              <input id="characterName" class="input" value="Aria" />
+            </label>
+          </div>
+          <label class="field">
+            <span>Avatar URL</span>
+            <input id="characterAvatar" class="input" placeholder="/static/img/avatar.png" />
+          </label>
+          <label class="field fill">
+            <span>System Prompt</span>
+            <textarea id="systemPrompt" class="input textarea">You are Aria, a thoughtful roleplay assistant. Stay in character, respond vividly, and adapt to the user's scene.</textarea>
+          </label>
+          <div class="active-model-row">
+            <span id="activeLorebookDot" class="status-dot"></span>
+            <p id="activeLorebookStatus">No active lorebook</p>
+          </div>
+        </section>
+      </aside>
+
+      <main class="chat-main">
+        <header class="chat-header">
+          <div class="chat-heading">
+            <button id="toggleSidebar" class="icon-button sidebar-toggle" type="button" title="Toggle sidebar" aria-label="Toggle settings sidebar" aria-controls="settingsSidebar" aria-expanded="true">
+              <svg class="sidebar-toggle-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 6h16" />
+                <path d="M4 12h16" />
+                <path d="M4 18h16" />
+              </svg>
+            </button>
+            <div>
+              <h2 id="chatTitle">Aria</h2>
+              <p id="chatSubtitle">Local Engine Mode</p>
+            </div>
+          </div>
+          <div class="chat-actions">
+            <select id="chatHistorySelect" class="input session-select" title="Past chats">
+              <option value="">Past Chats</option>
+            </select>
+            <button id="exportChat" class="secondary-button" type="button">Export Logs</button>
+            <button id="deleteChat" class="secondary-button" type="button">Delete</button>
+            <button id="clearChat" class="secondary-button" type="button">Clear Chat</button>
+          </div>
+        </header>
+
+        <section id="chatMessages" class="chat-messages" aria-live="polite"></section>
+
+        <form id="chatForm" class="composer">
+          <textarea id="messageInput" class="composer-input" rows="1" placeholder="Message"></textarea>
+          <button id="sendButton" class="send-button" type="submit">Send</button>
+        </form>
+      </main>
+    </div>
+
+    <div id="model-market-modal" class="modal-overlay hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="model-market-title">
+      <div class="modal-window">
+        <header class="modal-header">
+          <div>
+            <h2 id="model-market-title">Model Marketplace</h2>
+            <p>Manage active local memory and pull GGUF models from Hugging Face.</p>
+          </div>
+          <button id="closeModelMarket" class="icon-button close-button" type="button" title="Close" aria-label="Close model marketplace">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
+        </header>
+
+        <div class="modal-grid">
+          <section class="modal-card">
+            <div class="panel-title">
+              <h2>Local Manager</h2>
+              <button id="refreshModels" class="ghost-button" type="button">Scan</button>
+            </div>
+
+            <div class="active-model-row">
+              <span id="activeModelDot" class="status-dot"></span>
+              <p id="modelStatus">No model loaded</p>
+            </div>
+
+            <label class="field">
+              <span>GGUF Model</span>
+              <select id="localModelPath" class="input"></select>
+            </label>
+
+            <div class="two-col">
+              <label class="field">
+                <span>Template</span>
+                <select id="promptTemplate" class="input">
+                  <option value="chatml">ChatML</option>
+                  <option value="llama3">Llama 3</option>
+                  <option value="mistral">Mistral</option>
+                  <option value="plain">Plain</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>GPU Layers</span>
+                <input id="gpuLayers" class="input" type="number" value="0" min="-1" />
+              </label>
+            </div>
+
+            <label class="field">
+              <span>Context</span>
+              <input id="contextSize" class="input" type="number" value="4096" min="512" />
+            </label>
+
+            <div class="button-row">
+              <button id="loadModel" class="primary-button" type="button">Load</button>
+              <button id="unloadModel" class="secondary-button" type="button">Unload</button>
+            </div>
+          </section>
+
+          <section class="modal-card">
+            <div class="panel-title">
+              <h2>HF Marketplace</h2>
+              <span class="badge">GGUF</span>
+            </div>
+
+            <form id="hfSearchForm" class="hf-search-row">
+              <label class="field fill">
+                <span>Repository</span>
+                <input id="hfRepoInput" class="input" value="Qwen/Qwen2.5-1.5B-Instruct-GGUF" placeholder="owner/model-GGUF" />
+              </label>
+              <button id="hfSearchButton" class="primary-button" type="submit">Search</button>
+            </form>
+
+            <div id="downloadProgressPanel" class="download-progress hidden">
+              <div class="progress-copy">
+                <span id="downloadStatusText">Preparing download</span>
+                <span id="downloadSpeedText">0 B/s</span>
+              </div>
+              <div class="progress-bar">
+                <div id="downloadProgressFill" class="progress-fill"></div>
+              </div>
+              <p id="downloadProgressText">0%</p>
+            </div>
+
+            <div id="hfResults" class="market-results">
+              <div class="empty-state">Search a Hugging Face GGUF repository to list quantized files.</div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <div id="character-modal" class="modal-overlay hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="character-modal-title">
+      <div class="modal-window">
+        <header class="modal-header">
+          <div>
+            <h2 id="character-modal-title">Character Cards</h2>
+            <p>Create, save, and switch local roleplay profiles.</p>
+          </div>
+          <button id="closeCharacterLibrary" class="icon-button close-button" type="button" title="Close" aria-label="Close character cards">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
+        </header>
+
+        <div class="modal-grid character-grid">
+          <section class="modal-card">
+            <div class="panel-title">
+              <h2>Saved Cards</h2>
+              <button id="newCharacter" class="ghost-button" type="button">New</button>
+            </div>
+            <div id="characterList" class="profile-list">
+              <div class="empty-state">No saved character cards yet.</div>
+            </div>
+          </section>
+
+          <section class="modal-card">
+            <div class="panel-title">
+              <h2>Card Editor</h2>
+              <span id="characterEditorMode" class="badge">Draft</span>
+            </div>
+            <div class="avatar-config">
+              <div id="characterEditorAvatar" class="avatar avatar-large">A</div>
+              <label class="field fill">
+                <span>Name</span>
+                <input id="characterEditorName" class="input" value="Aria" />
+              </label>
+            </div>
+            <label class="field">
+              <span>Avatar URL/File</span>
+              <input id="characterEditorAvatarUrl" class="input" placeholder="/static/img/avatar.png" />
+            </label>
+            <label class="field">
+              <span>Description</span>
+              <textarea id="characterEditorDescription" class="input textarea compact-textarea" placeholder="Backstory, scenario role, physical details"></textarea>
+            </label>
+            <label class="field">
+              <span>Personality</span>
+              <textarea id="characterEditorPersonality" class="input textarea compact-textarea" placeholder="Speech style, motivations, habits"></textarea>
+            </label>
+            <label class="field">
+              <span>First Message</span>
+              <textarea id="characterEditorFirstMessage" class="input textarea compact-textarea">Hello. I am Aria.</textarea>
+            </label>
+            <div class="button-row">
+              <button id="saveCharacter" class="primary-button" type="button">Save Card</button>
+              <button id="useCharacter" class="secondary-button" type="button">Use Card</button>
+            </div>
+            <p id="characterSaveStatus" class="muted">Local JSON profiles are stored in storage/characters.</p>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <div id="lorebook-modal" class="modal-overlay hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="lorebook-modal-title">
+      <div class="modal-window">
+        <header class="modal-header">
+          <div>
+            <h2 id="lorebook-modal-title">Lorebook Editor</h2>
+            <p>World Info entries trigger hidden context when matching chat keywords.</p>
+          </div>
+          <button id="closeLorebookEditor" class="icon-button close-button" type="button" title="Close" aria-label="Close lorebook editor">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
+        </header>
+
+        <div class="modal-grid lorebook-grid">
+          <section class="modal-card">
+            <div class="panel-title">
+              <h2>Lorebooks</h2>
+              <button id="newLorebook" class="ghost-button" type="button">New</button>
+            </div>
+            <div id="lorebookList" class="profile-list">
+              <div class="empty-state">No lorebooks yet.</div>
+            </div>
+          </section>
+
+          <section class="modal-card">
+            <div class="panel-title">
+              <h2>World Info</h2>
+              <label class="toggle-row">
+                <input id="lorebookActive" type="checkbox" />
+                <span>Active</span>
+              </label>
+            </div>
+            <label class="field">
+              <span>Name</span>
+              <input id="lorebookName" class="input" value="Default Lorebook" />
+            </label>
+            <div class="panel-title">
+              <h2>Entries</h2>
+              <button id="addLoreEntry" class="ghost-button" type="button">Add Entry</button>
+            </div>
+            <div id="loreEntryList" class="entry-list"></div>
+            <div class="button-row">
+              <button id="saveLorebook" class="primary-button" type="button">Save Lorebook</button>
+              <button id="useLorebook" class="secondary-button" type="button">Use Session</button>
+            </div>
+            <p id="lorebookSaveStatus" class="muted">Keyword lists use commas, like Excalibur, holy sword.</p>
+          </section>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
