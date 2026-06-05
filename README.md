@@ -1,68 +1,49 @@
 # Local Tavern
 
-Phase 1 scaffold for an all-in-one local AI desktop chat application inspired by LM Studio, KoboldCPP, and SillyTavern.
+An open-source, dual-compatible local AI chat interface optimized for performance and ease of use. Local Tavern bridges the deep customization of SillyTavern with the self-contained simplicity of LM Studio, giving roleplay, model management, and local-first chat workflows a clean single-app home.
 
-## What Is Implemented
+## The Killer Feature: Adaptive Hardware Intelligence
 
-- FastAPI backend served on localhost.
-- Native desktop launcher through `pywebview`.
-- Dark local web interface served by the backend.
-- Streaming chat endpoint using server-sent events.
-- Inference Source toggle:
-  - Local Engine Mode: offline `.gguf` inference through `llama-cpp-python`.
-  - Cloud API Mode: OpenAI/OpenRouter-compatible async HTTP streaming.
-- Local model scan/load/unload endpoints for `.gguf` files under `storage/models`.
-- Hugging Face `.gguf` repository search and background downloads with SSE progress.
-- Character, lorebook, and chat-session JSON persistence under local storage.
-- Past chat history, clear-chat reset, and browser-side JSON export.
-- Prompt templates for ChatML, Llama 3, Mistral, and plain instruction prompts.
-- Client-side storage folder structure for models, characters, chats, and lorebooks.
-- Small extension registry scaffold for future image generation, captioning, or tool modules.
+Local Tavern features **Dynamic Dual-Compatibility Inference Routing**.
 
-Phase 3 character/lorebook persistence is intentionally not implemented yet.
+When you load a GGUF model, the app first attempts to run it completely natively through `llama-cpp-python`. On high-end and modern systems, this keeps inference direct, fast, and self-contained.
 
-## Setup
+If the machine uses a legacy CPU architecture and native loading triggers an AVX2/AVX mismatch, DLL initialization failure, or Illegal Instruction error, Local Tavern catches the failure safely instead of crashing. It then instantly initializes an embedded `koboldcpp-oldpc.exe` process in the background, headlessly, and routes generation through its OpenAI-compatible local API.
 
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-```
+The result: modern systems get native inference, older systems still get a smooth local GGUF workflow, and the user does not have to manually launch a separate KoboldCPP window.
 
-For local `.gguf` inference:
+## Ultra-Simple Installation & Launch
 
-```powershell
-pip install -r requirements-local.txt
-```
+### Step 1
 
-Place `.gguf` files in:
+Place your favorite GGUF models in the root folder or `storage/models/`.
 
-```text
-storage/models/
-```
+If you are using an older PC, make sure `koboldcpp-oldpc.exe` is in the project root directory.
 
-## Run
+### Step 2
 
-Desktop window:
+Double-click `install.bat` once.
 
-```powershell
-python run.py
-```
+It automatically creates an isolated `venv` environment and installs the lightweight dependencies needed to run the app.
 
-Backend-only browser mode:
+### Step 3
 
-```powershell
-python -m local_tavern.main
-```
+Double-click `start.bat` to launch.
 
-Then open:
+The app boots the local Uvicorn server and opens exactly one tab in your default browser at `http://127.0.0.1:7865`.
 
-```text
-http://127.0.0.1:7865
-```
+## Features Checklist
 
-## Notes
+- Streaming text generation via Server-Sent Events (SSE).
+- Local model marketplace with Hugging Face search and background download progress tracking.
+- Dynamic GGUF loading with native `llama-cpp-python` first and legacy KoboldCPP worker fallback when needed.
+- Built-in prompt formatting cards for ChatML, Llama 3, and Mistral.
+- Cloud API mode for OpenAI-compatible endpoints such as OpenRouter, Ollama, and KoboldCPP.
+- Full character card persistence for names, descriptions, personalities, first messages, and avatars.
+- Lorebook and World Info keyword scanning with contextual prompt injection.
+- Conversation history persistence with clear chat, session restore, and export support.
+- Local-first storage under `storage/` for models, characters, lorebooks, chats, and extension data.
 
-- API keys are never written to disk by Phase 1. They are sent only from the browser UI to the local backend for the current cloud request.
-- When Local Engine Mode is selected, cloud provider, base URL, model, and API key fields are hidden and disabled in the UI.
-- Heavy dependencies are split out so the desktop shell and cloud mode can run without compiling `llama-cpp-python`.
+## License
+
+Local Tavern is released under the GNU Affero General Public License v3.0. Community contributions are welcome, and derivative networked versions must preserve the same open-source freedoms.
