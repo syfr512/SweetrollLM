@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from local_tavern.schemas import ChatMessage, ChatRole, PromptTemplate
+from sweetroll_lm.schemas import ChatMessage, ChatRole, PromptTemplate
 
 
 def render_prompt(

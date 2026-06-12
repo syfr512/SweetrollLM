@@ -5,7 +5,7 @@ cd /d "%~dp0"
 
 echo.
 echo ========================================
-echo  Local Tavern - Automated Installation
+echo  SweetrollLM - Automated Installation
 echo ========================================
 echo.
 
@@ -43,6 +43,6 @@ if errorlevel 1 (
 
 echo.
 echo Installation complete.
-echo Run start.bat to launch Local Tavern.
+echo Run start.bat to launch SweetrollLM.
 echo.
 pause

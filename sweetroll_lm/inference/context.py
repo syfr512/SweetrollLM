@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import re
 
-from local_tavern.schemas import ChatMessage, ChatRequest, ChatRole
-from local_tavern.storage import get_character, get_lorebook
+from sweetroll_lm.schemas import ChatMessage, ChatRequest, ChatRole
+from sweetroll_lm.storage import get_character, get_lorebook
 
 
 def orchestrate_chat_context(request: ChatRequest) -> ChatRequest:

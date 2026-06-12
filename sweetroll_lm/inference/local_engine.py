@@ -15,10 +15,10 @@ from typing import Any
 
 import httpx
 
-from local_tavern.config import settings
-from local_tavern.inference.prompt_templates import render_prompt
-from local_tavern.schemas import ChatRequest, LocalModelLoadRequest, LocalModelStatus
-from local_tavern.storage import resolve_model_path
+from sweetroll_lm.config import settings
+from sweetroll_lm.inference.prompt_templates import render_prompt
+from sweetroll_lm.schemas import ChatRequest, LocalModelLoadRequest, LocalModelStatus
+from sweetroll_lm.storage import resolve_model_path
 
 
 logger = logging.getLogger(__name__)
@@ -96,7 +96,7 @@ class _KoboldCppProcessManager:
         if executable is None:
             raise RuntimeError(
                 "KoboldCPP executable not found. Place koboldcpp-oldpc.exe in the "
-                "project root or bin folder, or set LOCAL_TAVERN_KOBOLDCPP_PATH."
+                "project root or bin folder, or set SWEETROLL_LM_KOBOLDCPP_PATH."
             )
 
         async with asyncio.Lock():
@@ -167,7 +167,7 @@ class _KoboldCppProcessManager:
 
         raise RuntimeError(
             "KoboldCPP started but did not become ready before the timeout. "
-            "Try a smaller model or increase LOCAL_TAVERN_KOBOLDCPP_READY_TIMEOUT."
+            "Try a smaller model or increase SWEETROLL_LM_KOBOLDCPP_READY_TIMEOUT."
         )
 
     def _process_is_running_locked(self) -> bool:

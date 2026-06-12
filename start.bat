@@ -5,7 +5,7 @@ cd /d "%~dp0"
 
 echo.
 echo ========================================
-echo  Local Tavern - Launcher
+echo  SweetrollLM - Launcher
 echo ========================================
 echo.
 
@@ -26,15 +26,15 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo Starting Local Tavern backend...
-start "Local Tavern Backend" /B python run.py
+echo Starting SweetrollLM backend...
+start "SweetrollLM Backend" /B python run.py
 
 echo Waiting for the local server to initialize...
 timeout /t 2 /nobreak >nul
 
-echo Opening Local Tavern in your default browser...
+echo Opening SweetrollLM in your default browser...
 start "" "http://127.0.0.1:7865"
 
 echo.
-echo Local Tavern is starting. You can close this window after the app opens.
+echo SweetrollLM is starting. You can close this window after the app opens.
 echo.

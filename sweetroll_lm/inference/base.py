@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from typing import Protocol
 
-from local_tavern.schemas import ChatRequest
+from sweetroll_lm.schemas import ChatRequest
 
 
 class InferenceEngine(Protocol):

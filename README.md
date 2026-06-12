@@ -1,14 +1,14 @@
-# Local Tavern
+# SweetrollLM
 
-An open-source, dual-compatible local AI chat interface optimized for performance and ease of use. Local Tavern bridges the deep customization of SillyTavern with the self-contained simplicity of LM Studio, giving roleplay, model management, and local-first chat workflows a clean single-app home.
+An open-source, dual-compatible local AI chat interface optimized for performance and ease of use. SweetrollLM bridges the deep customization of SillyTavern with the self-contained simplicity of LM Studio, giving roleplay, model management, and local-first chat workflows a clean single-app home.
 
 ## The Killer Feature: Adaptive Hardware Intelligence
 
-Local Tavern features **Dynamic Dual-Compatibility Inference Routing**.
+SweetrollLM features **Dynamic Dual-Compatibility Inference Routing**.
 
 When you load a GGUF model, the app first attempts to run it completely natively through `llama-cpp-python`. On high-end and modern systems, this keeps inference direct, fast, and self-contained.
 
-If the machine uses a legacy CPU architecture and native loading triggers an AVX2/AVX mismatch, DLL initialization failure, or Illegal Instruction error, Local Tavern catches the failure safely instead of crashing. It then instantly initializes an embedded `koboldcpp-oldpc.exe` process in the background, headlessly, and routes generation through its OpenAI-compatible local API.
+If the machine uses a legacy CPU architecture and native loading triggers an AVX2/AVX mismatch, DLL initialization failure, or Illegal Instruction error, SweetrollLM catches the failure safely instead of crashing. It then instantly initializes an embedded `koboldcpp-oldpc.exe` process in the background, headlessly, and routes generation through its OpenAI-compatible local API.
 
 The result: modern systems get native inference, older systems still get a smooth local GGUF workflow, and the user does not have to manually launch a separate KoboldCPP window.
 
@@ -46,4 +46,4 @@ The app boots the local Uvicorn server and opens exactly one tab in your default
 
 ## License
 
-Local Tavern is released under the GNU Affero General Public License v3.0. Community contributions are welcome, and derivative networked versions must preserve the same open-source freedoms.
+SweetrollLM is released under the GNU Affero General Public License v3.0. Community contributions are welcome, and derivative networked versions must preserve the same open-source freedoms.

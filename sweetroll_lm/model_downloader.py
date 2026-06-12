@@ -267,7 +267,7 @@ def _hf_resolve_url(repo_id: str, filename: str) -> str:
 def _hf_headers() -> dict[str, str]:
     headers = {
         "Accept-Encoding": "identity",
-        "User-Agent": "local-tavern-model-downloader/1.0",
+        "User-Agent": "sweetroll-lm-model-downloader/1.0",
     }
     token = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_HUB_TOKEN")
     if token:

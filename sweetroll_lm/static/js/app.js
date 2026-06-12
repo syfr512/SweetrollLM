@@ -202,7 +202,7 @@ function bindEvents() {
 
 function loadSidebarPreference() {
   try {
-    return window.localStorage.getItem("local-tavern-sidebar-collapsed") === "true";
+    return window.localStorage.getItem("sweetroll-lm-sidebar-collapsed") === "true";
   } catch {
     return false;
   }
@@ -220,7 +220,7 @@ function setSidebarCollapsed(collapsed, options = {}) {
   if (options.persist !== false) {
     try {
       window.localStorage.setItem(
-        "local-tavern-sidebar-collapsed",
+        "sweetroll-lm-sidebar-collapsed",
         String(state.sidebarCollapsed)
       );
     } catch {

@@ -10,14 +10,14 @@ from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import Any
 
-from local_tavern import model_downloader
-from local_tavern import routes
-from local_tavern import storage
-from local_tavern.inference import cloud_engine
-from local_tavern.inference import local_engine
-from local_tavern.inference.local_engine import LocalLlamaEngine
-from local_tavern.routes import _select_chat_engine
-from local_tavern.schemas import ChatRequest, InferenceSource, LocalModelLoadRequest, ModelDownloadRequest
+from sweetroll_lm import model_downloader
+from sweetroll_lm import routes
+from sweetroll_lm import storage
+from sweetroll_lm.inference import cloud_engine
+from sweetroll_lm.inference import local_engine
+from sweetroll_lm.inference.local_engine import LocalLlamaEngine
+from sweetroll_lm.routes import _select_chat_engine
+from sweetroll_lm.schemas import ChatRequest, InferenceSource, LocalModelLoadRequest, ModelDownloadRequest
 
 
 TOTAL_BYTES = 4096
@@ -339,7 +339,7 @@ async def verify_external_fallback_routing() -> tuple[bool, str]:
 
 
 async def main() -> int:
-    logging.getLogger("local_tavern.inference.local_engine").setLevel(logging.CRITICAL)
+    logging.getLogger("sweetroll_lm.inference.local_engine").setLevel(logging.CRITICAL)
     downloader_ok, downloader_message = verify_downloader_stream_logic()
     fallback_ok, fallback_message = await verify_external_fallback_routing()
 

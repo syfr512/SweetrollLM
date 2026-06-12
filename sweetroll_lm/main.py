@@ -26,7 +26,7 @@ def create_app() -> FastAPI:
     ensure_storage()
 
     app = FastAPI(
-        title="Local Tavern",
+        title="SweetrollLM",
         description="Local desktop AI chat backend",
         version="0.1.0",
         lifespan=lifespan,
@@ -52,7 +52,7 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(
-        "local_tavern.main:app",
+        "sweetroll_lm.main:app",
         host=settings.host,
         port=settings.port,
         reload=False,

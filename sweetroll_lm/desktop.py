@@ -25,7 +25,7 @@ def run_desktop() -> None:
         return
 
     webview.create_window(
-        "Local Tavern",
+        "SweetrollLM",
         url,
         width=1320,
         height=860,

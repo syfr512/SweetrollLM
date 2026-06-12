@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 
 import httpx
 
-from local_tavern.schemas import ChatRequest, CloudProvider
+from sweetroll_lm.schemas import ChatRequest, CloudProvider
 
 
 class CloudChatEngine:
@@ -30,7 +30,7 @@ class CloudChatEngine:
         if api_key.strip():
             headers["Authorization"] = f"Bearer {api_key.strip()}"
         if request.cloud.provider == CloudProvider.openrouter:
-            headers["X-Title"] = "Local Tavern"
+            headers["X-Title"] = "SweetrollLM"
 
         payload = {
             "model": request.cloud.model,
