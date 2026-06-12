@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 
 from sweetroll_lm.schemas import ChatMessage, ChatRequest, ChatRole
-from sweetroll_lm.storage import get_character, get_lorebook
+from sweetroll_lm.storage import get_character, get_default_persona, get_lorebook, get_persona
 
 
 def orchestrate_chat_context(request: ChatRequest) -> ChatRequest:
@@ -19,11 +19,29 @@ def orchestrate_chat_context(request: ChatRequest) -> ChatRequest:
                 character.name,
                 character.description,
                 character.personality,
+                character.scenario,
+                character.example_dialogue,
             )
             if character_block:
                 system_blocks.append(character_block)
         except FileNotFoundError:
             pass
+
+    persona = None
+    if request.persona_id:
+        try:
+            persona = get_persona(request.persona_id)
+        except FileNotFoundError:
+            persona = None
+    if persona is None:
+        persona = get_default_persona()
+    if persona:
+        persona_block = _render_persona_block(persona.name, persona.description)
+        if persona_block:
+            system_blocks.append(persona_block)
+
+    if request.vision_context.strip():
+        system_blocks.append(_render_vision_block(request.vision_context.strip()))
 
     if request.lorebook_enabled and request.lorebook_id:
         try:
@@ -52,13 +70,31 @@ def scan_lorebook_entries(request: ChatRequest, entries: list) -> list[str]:
     return matches
 
 
-def _render_character_block(name: str, description: str, personality: str) -> str:
+def _render_character_block(
+    name: str,
+    description: str,
+    personality: str,
+    scenario: str,
+    example_dialogue: str,
+) -> str:
     lines = [f"[Character: {name}]"]
     if description.strip():
         lines.append(f"Description: {description.strip()}")
     if personality.strip():
         lines.append(f"Personality: {personality.strip()}")
+    if scenario.strip():
+        lines.append(f"Scenario: {scenario.strip()}")
+    if example_dialogue.strip():
+        lines.append(f"Example Dialogue:\n{example_dialogue.strip()}")
     return "\n".join(lines) if len(lines) > 1 else ""
+
+
+def _render_persona_block(name: str, description: str) -> str:
+    lines = [f"[User Persona: {name}]"]
+    if description.strip():
+        lines.append(f"Description/Bio: {description.strip()}")
+    lines.append("Address the user according to this persona when relevant.")
+    return "\n".join(lines)
 
 
 def _render_lorebook_block(matches: list[str]) -> str:
@@ -68,6 +104,16 @@ def _render_lorebook_block(matches: list[str]) -> str:
         "The following lore is relevant to the current scene. Use it as hidden "
         "context and do not mention that it was injected.\n"
         f"{blocks}"
+    )
+
+
+def _render_vision_block(caption: str) -> str:
+    return (
+        "[Visual Context]\n"
+        "The user has attached image context for the current conversation. Treat this "
+        "as hidden perception data and respond as though the character can see it. "
+        "Do not mention internal captioning unless the user asks.\n"
+        f"{caption}"
     )
 
 

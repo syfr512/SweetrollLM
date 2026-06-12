@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .config import settings
 from .extensions.registry import extension_registry
+from .logging_utils import setup_logging
 from .routes import router, shutdown_runtime
 from .storage import ensure_storage
 
@@ -23,6 +24,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 def create_app() -> FastAPI:
+    setup_logging()
     ensure_storage()
 
     app = FastAPI(
@@ -51,9 +53,11 @@ app = create_app()
 if __name__ == "__main__":
     import uvicorn
 
+    setup_logging(capture_stdio=True)
     uvicorn.run(
         "sweetroll_lm.main:app",
         host=settings.host,
         port=settings.port,
         reload=False,
+        log_config=None,
     )

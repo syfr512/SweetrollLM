@@ -17,7 +17,14 @@ storage/chats/*
 !storage/chats/.gitkeep
 storage/characters/*
 !storage/characters/.gitkeep
+storage/personas/*
+!storage/personas/.gitkeep
 storage/lorebooks/*
 !storage/lorebooks/.gitkeep
+storage/api_providers.json
+storage/assets/*
+!storage/assets/.gitkeep
 storage/extensions/*
 !storage/extensions/.gitkeep
+storage/logs/*
+!storage/logs/.gitkeep

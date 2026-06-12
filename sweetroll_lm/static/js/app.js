@@ -3,9 +3,20 @@ const DEFAULT_CHARACTER = {
   name: "Aria",
   description: "",
   personality: "",
+  scenario: "",
+  example_dialogue: "",
   first_message: "Hello. I am Aria.",
   avatar_url: "",
   avatar_file: "",
+};
+
+const DEFAULT_PERSONA = {
+  id: null,
+  name: "User",
+  description: "",
+  avatar_url: "",
+  avatar_file: "",
+  is_default: false,
 };
 
 const state = {
@@ -28,6 +39,25 @@ const state = {
   activeLorebook: null,
   editingLorebookId: null,
   lorebookEnabled: false,
+  selectedMessageIds: new Set(),
+  editingMessageId: null,
+  personas: [],
+  activePersona: null,
+  editingPersonaId: null,
+  apiProviders: [],
+  activeApiProviderId: null,
+  editingApiProviderId: null,
+  localModels: [],
+  downloadedModelNames: new Set(),
+  lastHfRepoId: "",
+  lastHfFiles: [],
+  downloadHideTimer: null,
+  extensionsOpen: false,
+  visionContext: "",
+  visionAttachment: null,
+  imageGenerating: false,
+  logRefreshTimer: null,
+  startupReady: false,
 };
 
 const el = {};
@@ -39,11 +69,21 @@ document.addEventListener("DOMContentLoaded", () => {
 async function initializeApp() {
   cacheElements();
   bindEvents();
+  pollStartupHealth();
+  setChatTransparency(el.chatTransparency.value);
   setSidebarCollapsed(loadSidebarPreference(), { persist: false });
   updateInferenceVisibility();
   setCharacterEditor(DEFAULT_CHARACTER);
+  setPersonaEditor(DEFAULT_PERSONA);
   applyCharacter(DEFAULT_CHARACTER, { resetChat: false });
-  await Promise.all([loadCharacters(), loadLorebooks(), refreshHealth(), refreshModels()]);
+  await Promise.all([
+    loadCharacters(),
+    loadPersonas(),
+    loadLorebooks(),
+    loadApiProviders(),
+    refreshHealth(),
+    refreshModels(),
+  ]);
   resetChatToFirstMessage();
   installAutoScrollObserver();
 }
@@ -51,6 +91,8 @@ async function initializeApp() {
 function cacheElements() {
   [
     "connectionStatus",
+    "startupOverlay",
+    "startupStatus",
     "appShell",
     "settingsSidebar",
     "toggleSidebar",
@@ -67,12 +109,26 @@ function cacheElements() {
     "modelStatus",
     "activeModelDot",
     "cloudProvider",
+    "apiProviderSelect",
+    "apiProviderList",
+    "apiProviderName",
+    "apiProviderDefault",
+    "newApiProvider",
+    "saveApiProvider",
+    "deleteApiProvider",
+    "apiProviderStatus",
     "baseUrl",
     "cloudModel",
     "apiKey",
     "temperature",
     "topP",
     "maxTokens",
+    "textStreaming",
+    "characterBackgrounds",
+    "chatTransparency",
+    "chatTransparencyValue",
+    "personaSelect",
+    "openPersonaRegistry",
     "characterName",
     "characterAvatar",
     "characterAvatarPreview",
@@ -81,14 +137,43 @@ function cacheElements() {
     "activeLorebookStatus",
     "chatTitle",
     "chatSubtitle",
+    "chatBackdrop",
     "chatHistorySelect",
     "exportChat",
     "deleteChat",
     "clearChat",
+    "openConsoleLogs",
+    "closeConsoleLogs",
+    "refreshConsoleLogs",
+    "consoleLogOutput",
+    "consoleLogStatus",
+    "toggleExtensions",
+    "extensionsDrawer",
+    "extensionStatus",
+    "imageProvider",
+    "imageEndpoint",
+    "imageModel",
+    "imageAspectRatio",
+    "imageSteps",
+    "imagePrompt",
+    "imageNegativePrompt",
+    "generateImage",
+    "imageGenerationStatus",
+    "visionDropzone",
+    "visionImageInput",
+    "visionEndpoint",
+    "visionProvider",
+    "visionAttachmentPreview",
+    "visionCaptionStatus",
+    "attachImage",
+    "chatImageInput",
     "chatMessages",
     "chatForm",
     "messageInput",
     "sendButton",
+    "bulkActionBar",
+    "bulkSelectionCount",
+    "deleteSelectedMessages",
     "openModelMarket",
     "closeModelMarket",
     "hfSearchForm",
@@ -103,18 +188,37 @@ function cacheElements() {
     "openCharacterLibrary",
     "closeCharacterLibrary",
     "editCurrentCharacter",
+    "importCharacter",
+    "importCharacterFile",
     "newCharacter",
     "characterList",
     "characterEditorMode",
     "characterEditorAvatar",
     "characterEditorName",
     "characterEditorAvatarUrl",
+    "characterAvatarFile",
     "characterEditorDescription",
     "characterEditorPersonality",
+    "characterEditorScenario",
+    "characterEditorExamples",
     "characterEditorFirstMessage",
     "saveCharacter",
     "useCharacter",
+    "exportCharacter",
     "characterSaveStatus",
+    "closePersonaRegistry",
+    "newPersona",
+    "personaList",
+    "personaEditorMode",
+    "personaEditorAvatar",
+    "personaEditorName",
+    "personaEditorAvatarUrl",
+    "personaAvatarFile",
+    "personaEditorDescription",
+    "personaDefault",
+    "savePersona",
+    "usePersona",
+    "personaSaveStatus",
     "openLorebookEditor",
     "closeLorebookEditor",
     "newLorebook",
@@ -130,13 +234,19 @@ function cacheElements() {
     el[id] = document.getElementById(id);
   });
   el.modelMarketModal = document.getElementById("model-market-modal");
+  el.consoleLogsModal = document.getElementById("console-logs-modal");
   el.characterModal = document.getElementById("character-modal");
+  el.personaModal = document.getElementById("persona-modal");
   el.lorebookModal = document.getElementById("lorebook-modal");
 }
 
 function bindEvents() {
   el.inferenceSource.addEventListener("change", updateInferenceVisibility);
   el.cloudProvider.addEventListener("change", updateCloudDefaults);
+  el.apiProviderSelect.addEventListener("change", selectApiProvider);
+  el.newApiProvider.addEventListener("click", newApiProviderDraft);
+  el.saveApiProvider.addEventListener("click", saveApiProvider);
+  el.deleteApiProvider.addEventListener("click", deleteApiProvider);
   el.refreshModels.addEventListener("click", refreshModels);
   el.loadModel.addEventListener("click", loadModel);
   el.unloadModel.addEventListener("click", unloadModel);
@@ -146,13 +256,18 @@ function bindEvents() {
 
   el.openModelMarket.addEventListener("click", openModelMarket);
   el.closeModelMarket.addEventListener("click", () => closeModal(el.modelMarketModal));
+  el.openConsoleLogs.addEventListener("click", openConsoleLogs);
+  el.closeConsoleLogs.addEventListener("click", () => closeModal(el.consoleLogsModal));
+  el.refreshConsoleLogs.addEventListener("click", fetchConsoleLogs);
   el.openCharacterLibrary.addEventListener("click", openCharacterLibrary);
   el.editCurrentCharacter.addEventListener("click", openCharacterLibrary);
   el.closeCharacterLibrary.addEventListener("click", () => closeModal(el.characterModal));
+  el.openPersonaRegistry.addEventListener("click", openPersonaRegistry);
+  el.closePersonaRegistry.addEventListener("click", () => closeModal(el.personaModal));
   el.openLorebookEditor.addEventListener("click", openLorebookEditor);
   el.closeLorebookEditor.addEventListener("click", () => closeModal(el.lorebookModal));
 
-  [el.modelMarketModal, el.characterModal, el.lorebookModal].forEach((modal) => {
+  [el.modelMarketModal, el.consoleLogsModal, el.characterModal, el.personaModal, el.lorebookModal].forEach((modal) => {
     modal.addEventListener("click", (event) => {
       if (event.target === modal) {
         closeModal(modal);
@@ -166,11 +281,26 @@ function bindEvents() {
   });
 
   el.hfSearchForm.addEventListener("submit", searchHfModels);
+  document.querySelectorAll(".cookbook-search").forEach((button) => {
+    button.addEventListener("click", () => searchCookbookModel(button.dataset.repo || ""));
+  });
+  el.importCharacter.addEventListener("click", () => el.importCharacterFile.click());
+  el.importCharacterFile.addEventListener("change", importCharacterFile);
   el.newCharacter.addEventListener("click", () => setCharacterEditor(DEFAULT_CHARACTER));
   el.saveCharacter.addEventListener("click", saveCharacterCard);
   el.useCharacter.addEventListener("click", () => applyCharacter(editorCharacterPayload()));
+  el.exportCharacter.addEventListener("click", exportCharacterCard);
   el.characterEditorName.addEventListener("input", updateCharacterEditorAvatar);
   el.characterEditorAvatarUrl.addEventListener("input", updateCharacterEditorAvatar);
+  el.characterAvatarFile.addEventListener("change", handleCharacterAvatarFile);
+
+  el.personaSelect.addEventListener("change", selectPersona);
+  el.newPersona.addEventListener("click", () => setPersonaEditor(DEFAULT_PERSONA));
+  el.savePersona.addEventListener("click", savePersonaCard);
+  el.usePersona.addEventListener("click", () => applyPersona(editorPersonaPayload()));
+  el.personaEditorName.addEventListener("input", updatePersonaEditorAvatar);
+  el.personaEditorAvatarUrl.addEventListener("input", updatePersonaEditorAvatar);
+  el.personaAvatarFile.addEventListener("change", handlePersonaAvatarFile);
 
   el.newLorebook.addEventListener("click", newLorebookDraft);
   el.addLoreEntry.addEventListener("click", () => addLoreEntryRow());
@@ -186,10 +316,47 @@ function bindEvents() {
 
   el.characterName.addEventListener("input", updateCharacterPreview);
   el.characterAvatar.addEventListener("input", updateCharacterPreview);
+  el.characterBackgrounds.addEventListener("change", updateChatBackground);
+  el.chatTransparency.addEventListener("input", () => {
+    setChatTransparency(el.chatTransparency.value);
+  });
   el.clearChat.addEventListener("click", clearChat);
   el.exportChat.addEventListener("click", exportChatLogs);
   el.deleteChat.addEventListener("click", deleteActiveChat);
+  el.deleteSelectedMessages.addEventListener("click", deleteSelectedMessages);
   el.chatHistorySelect.addEventListener("change", loadSelectedChat);
+  el.toggleExtensions.addEventListener("click", toggleExtensionsDrawer);
+  el.generateImage.addEventListener("click", generateImageFromExtension);
+  el.attachImage.addEventListener("click", () => el.chatImageInput.click());
+  el.chatImageInput.addEventListener("change", (event) => {
+    handleImageAttachment(event.target.files?.[0]);
+    event.target.value = "";
+  });
+  el.visionDropzone.addEventListener("click", () => el.visionImageInput.click());
+  el.visionDropzone.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      el.visionImageInput.click();
+    }
+  });
+  el.visionImageInput.addEventListener("change", (event) => {
+    handleImageAttachment(event.target.files?.[0]);
+    event.target.value = "";
+  });
+  [el.chatForm, el.visionDropzone].forEach((dropTarget) => {
+    dropTarget.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      dropTarget.classList.add("drag-over");
+    });
+    dropTarget.addEventListener("dragleave", () => {
+      dropTarget.classList.remove("drag-over");
+    });
+    dropTarget.addEventListener("drop", (event) => {
+      event.preventDefault();
+      dropTarget.classList.remove("drag-over");
+      handleImageAttachment(event.dataTransfer?.files?.[0]);
+    });
+  });
   el.chatForm.addEventListener("submit", sendMessage);
   el.messageInput.addEventListener("input", autosizeComposer);
   el.messageInput.addEventListener("keydown", (event) => {
@@ -231,6 +398,20 @@ function setSidebarCollapsed(collapsed, options = {}) {
   window.setTimeout(scrollChatToBottom, 240);
 }
 
+function setChatTransparency(value) {
+  const numeric = Math.max(0.1, Math.min(1, Number(value) || 0.82));
+  document.documentElement.style.setProperty("--chat-bubble-opacity", numeric.toFixed(2));
+  el.chatTransparencyValue.textContent = `${Math.round(numeric * 100)}%`;
+}
+
+function toggleExtensionsDrawer() {
+  state.extensionsOpen = !state.extensionsOpen;
+  el.extensionsDrawer.classList.toggle("hidden", !state.extensionsOpen);
+  el.toggleExtensions.setAttribute("aria-expanded", String(state.extensionsOpen));
+  el.toggleExtensions.classList.toggle("is-active", state.extensionsOpen);
+  window.setTimeout(scrollChatToBottom, 180);
+}
+
 function openModelMarket() {
   openModal(el.modelMarketModal, el.closeModelMarket);
   refreshModels();
@@ -239,6 +420,11 @@ function openModelMarket() {
 function openCharacterLibrary() {
   openModal(el.characterModal, el.closeCharacterLibrary);
   loadCharacters();
+}
+
+function openPersonaRegistry() {
+  openModal(el.personaModal, el.closePersonaRegistry);
+  loadPersonas();
 }
 
 function openLorebookEditor() {
@@ -255,10 +441,84 @@ function openModal(modal, focusTarget) {
 function closeModal(modal) {
   modal.classList.add("hidden");
   modal.setAttribute("aria-hidden", "true");
+  if (modal === el.consoleLogsModal) {
+    stopConsoleLogPolling();
+  }
 }
 
 function closeAllModals() {
-  [el.modelMarketModal, el.characterModal, el.lorebookModal].forEach(closeModal);
+  [el.modelMarketModal, el.consoleLogsModal, el.characterModal, el.personaModal, el.lorebookModal].forEach(closeModal);
+}
+
+async function pollStartupHealth() {
+  if (!el.startupOverlay) {
+    return;
+  }
+
+  for (let attempt = 0; attempt < 80 && !state.startupReady; attempt += 1) {
+    try {
+      const response = await fetch("/api/health", { cache: "no-store" });
+      if (response.ok) {
+        state.startupReady = true;
+        el.startupStatus.textContent = "SweetrollLM is ready.";
+        window.setTimeout(hideStartupOverlay, 260);
+        return;
+      }
+      el.startupStatus.textContent = "Waiting for the local backend...";
+    } catch {
+      el.startupStatus.textContent = "Waiting for the local backend...";
+    }
+    await sleep(220);
+  }
+
+  if (!state.startupReady) {
+    el.startupStatus.textContent = "Still warming up. Check Console Logs if this persists.";
+  }
+}
+
+function hideStartupOverlay() {
+  el.startupOverlay.classList.add("startup-overlay-hidden");
+  window.setTimeout(() => {
+    el.startupOverlay.classList.add("hidden");
+  }, 420);
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+function openConsoleLogs() {
+  openModal(el.consoleLogsModal, el.closeConsoleLogs);
+  fetchConsoleLogs();
+  stopConsoleLogPolling();
+  state.logRefreshTimer = window.setInterval(fetchConsoleLogs, 2200);
+}
+
+function stopConsoleLogPolling() {
+  if (state.logRefreshTimer) {
+    window.clearInterval(state.logRefreshTimer);
+    state.logRefreshTimer = null;
+  }
+}
+
+async function fetchConsoleLogs() {
+  try {
+    const response = await fetch("/api/logs?limit=900", { cache: "no-store" });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload.detail || "Could not read backend logs");
+    }
+    el.consoleLogOutput.textContent = payload.text || "No log lines yet.";
+    el.consoleLogOutput.scrollTop = el.consoleLogOutput.scrollHeight;
+    el.consoleLogStatus.textContent = payload.truncated
+      ? "Showing the latest log lines."
+      : "Live log output is current.";
+  } catch (error) {
+    el.consoleLogOutput.textContent = `Log read failed: ${error.message}`;
+    el.consoleLogStatus.textContent = "Could not read backend logs.";
+  }
 }
 
 function updateInferenceVisibility() {
@@ -268,6 +528,9 @@ function updateInferenceVisibility() {
   el.sourceBadge.textContent = localMode ? "Local" : "Cloud";
   el.sourceBadge.classList.toggle("badge-local", localMode);
   el.chatSubtitle.textContent = localMode ? "Local Engine Mode" : "Cloud API Mode";
+  if (!localMode) {
+    applyActiveApiProviderToFields();
+  }
 }
 
 function setCloudFieldsEnabled(enabled) {
@@ -290,6 +553,272 @@ function updateCloudDefaults() {
   }
 }
 
+async function loadApiProviders() {
+  try {
+    const response = await fetch("/api/api-providers");
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.detail || "Could not load API providers");
+    }
+    state.apiProviders = data;
+    const active = defaultApiProvider() || state.apiProviders[0] || null;
+    state.activeApiProviderId = active?.id || null;
+    state.editingApiProviderId = active?.id || null;
+    renderApiProviderSelect();
+    renderApiProviderList();
+    if (active) {
+      setApiProviderEditor(active);
+      applyApiProviderToFields(active);
+    }
+  } catch (error) {
+    state.apiProviders = [];
+    renderApiProviderSelect();
+    renderApiProviderList();
+    setApiProviderStatus(error.message || "Could not load API providers.");
+  }
+}
+
+function renderApiProviderSelect() {
+  el.apiProviderSelect.innerHTML = "";
+  const manual = document.createElement("option");
+  manual.value = "";
+  manual.textContent = "Manual Cloud Fields";
+  el.apiProviderSelect.appendChild(manual);
+
+  state.apiProviders.forEach((provider) => {
+    const option = document.createElement("option");
+    option.value = provider.id;
+    option.textContent = provider.is_default
+      ? `${provider.name} (Default)`
+      : provider.name;
+    el.apiProviderSelect.appendChild(option);
+  });
+  el.apiProviderSelect.value = state.activeApiProviderId || "";
+}
+
+function renderApiProviderList() {
+  el.apiProviderList.innerHTML = "";
+  if (!state.apiProviders.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty-state compact-empty";
+    empty.textContent = "No saved API profiles yet.";
+    el.apiProviderList.appendChild(empty);
+    return;
+  }
+
+  state.apiProviders.forEach((provider) => {
+    const row = document.createElement("div");
+    row.className = "provider-row";
+    row.tabIndex = 0;
+    row.setAttribute("role", "button");
+    if (state.activeApiProviderId === provider.id) {
+      row.classList.add("active");
+    }
+
+    const radio = document.createElement("span");
+    radio.className = provider.is_default ? "provider-radio checked" : "provider-radio";
+
+    const copy = document.createElement("span");
+    copy.className = "provider-copy";
+    const name = document.createElement("span");
+    name.className = "provider-name";
+    name.textContent = provider.name;
+    const meta = document.createElement("span");
+    meta.className = "provider-meta";
+    meta.textContent = `${provider.default_model} - ${provider.base_url}`;
+    copy.append(name, meta);
+
+    const setDefault = document.createElement("button");
+    setDefault.className = "message-action";
+    setDefault.type = "button";
+    setDefault.textContent = provider.is_default ? "Default" : "Make Default";
+    setDefault.disabled = provider.is_default;
+    setDefault.addEventListener("click", (event) => {
+      event.stopPropagation();
+      setDefaultApiProvider(provider);
+    });
+
+    row.append(radio, copy, setDefault);
+    row.addEventListener("click", () => {
+      state.activeApiProviderId = provider.id;
+      state.editingApiProviderId = provider.id;
+      setApiProviderEditor(provider);
+      applyApiProviderToFields(provider);
+      renderApiProviderSelect();
+      renderApiProviderList();
+    });
+    row.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        row.click();
+      }
+    });
+    el.apiProviderList.appendChild(row);
+  });
+}
+
+function selectApiProvider() {
+  const provider = state.apiProviders.find((item) => item.id === el.apiProviderSelect.value);
+  state.activeApiProviderId = provider?.id || null;
+  state.editingApiProviderId = provider?.id || null;
+  if (provider) {
+    setApiProviderEditor(provider);
+    applyApiProviderToFields(provider);
+  }
+  renderApiProviderList();
+}
+
+function newApiProviderDraft() {
+  state.editingApiProviderId = null;
+  el.apiProviderSelect.value = "";
+  el.apiProviderName.value = "New Provider";
+  el.cloudProvider.value = "custom";
+  el.baseUrl.value = "http://127.0.0.1:11434/v1";
+  el.cloudModel.value = "local-model";
+  el.apiKey.value = "";
+  el.apiProviderDefault.checked = !state.apiProviders.length;
+  setApiProviderStatus("New provider draft.");
+}
+
+function setApiProviderEditor(provider) {
+  state.editingApiProviderId = provider.id;
+  el.apiProviderName.value = provider.name;
+  el.cloudProvider.value = inferCloudProvider(provider.base_url);
+  el.baseUrl.value = provider.base_url;
+  el.cloudModel.value = provider.default_model;
+  el.apiKey.value = provider.api_key || "";
+  el.apiProviderDefault.checked = Boolean(provider.is_default);
+}
+
+function apiProviderPayload() {
+  return {
+    id: state.editingApiProviderId,
+    name: el.apiProviderName.value.trim() || "API Provider",
+    base_url: el.baseUrl.value.trim(),
+    api_key: el.apiKey.value.trim(),
+    default_model: el.cloudModel.value.trim() || "local-model",
+    is_default: el.apiProviderDefault.checked,
+  };
+}
+
+async function saveApiProvider() {
+  const payload = apiProviderPayload();
+  el.saveApiProvider.disabled = true;
+  setApiProviderStatus("Saving provider.");
+  try {
+    const response = await fetch("/api/api-providers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const saved = await response.json();
+    if (!response.ok) {
+      throw new Error(saved.detail || "Could not save provider");
+    }
+    state.activeApiProviderId = saved.id;
+    state.editingApiProviderId = saved.id;
+    await loadApiProviders();
+    setApiProviderStatus(`Saved ${saved.name}.`);
+  } catch (error) {
+    setApiProviderStatus(error.message || "Could not save provider.");
+  } finally {
+    el.saveApiProvider.disabled = false;
+  }
+}
+
+async function deleteApiProvider() {
+  if (!state.editingApiProviderId) {
+    newApiProviderDraft();
+    return;
+  }
+  if (!window.confirm("Delete this local API provider profile?")) {
+    return;
+  }
+  try {
+    const response = await fetch(
+      `/api/api-providers/${encodeURIComponent(state.editingApiProviderId)}`,
+      { method: "DELETE" }
+    );
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload.detail || "Could not delete provider");
+    }
+    state.editingApiProviderId = null;
+    state.activeApiProviderId = null;
+    await loadApiProviders();
+    setApiProviderStatus("Provider deleted.");
+  } catch (error) {
+    setApiProviderStatus(error.message || "Could not delete provider.");
+  }
+}
+
+async function setDefaultApiProvider(provider) {
+  const payload = {
+    id: provider.id,
+    name: provider.name,
+    base_url: provider.base_url,
+    api_key: provider.api_key || "",
+    default_model: provider.default_model,
+    is_default: true,
+  };
+  try {
+    const response = await fetch("/api/api-providers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const saved = await response.json();
+    if (!response.ok) {
+      throw new Error(saved.detail || "Could not set default provider");
+    }
+    state.activeApiProviderId = saved.id;
+    await loadApiProviders();
+    setApiProviderStatus(`${saved.name} is now the active default.`);
+  } catch (error) {
+    setApiProviderStatus(error.message || "Could not set default provider.");
+  }
+}
+
+function applyActiveApiProviderToFields() {
+  const provider = activeApiProvider();
+  if (provider) {
+    applyApiProviderToFields(provider);
+  }
+}
+
+function applyApiProviderToFields(provider) {
+  el.cloudProvider.value = inferCloudProvider(provider.base_url);
+  el.baseUrl.value = provider.base_url;
+  el.cloudModel.value = provider.default_model;
+  el.apiKey.value = provider.api_key || "";
+}
+
+function activeApiProvider() {
+  return (
+    state.apiProviders.find((provider) => provider.id === state.activeApiProviderId) ||
+    defaultApiProvider()
+  );
+}
+
+function defaultApiProvider() {
+  return state.apiProviders.find((provider) => provider.is_default) || null;
+}
+
+function inferCloudProvider(baseUrl) {
+  const normalized = String(baseUrl || "").toLowerCase();
+  if (normalized.includes("openrouter.ai")) {
+    return "openrouter";
+  }
+  if (normalized.includes("api.openai.com")) {
+    return "openai";
+  }
+  return "custom";
+}
+
+function setApiProviderStatus(message) {
+  el.apiProviderStatus.textContent = message;
+}
+
 async function refreshHealth() {
   try {
     const response = await fetch("/api/health");
@@ -307,6 +836,8 @@ async function refreshModels() {
     const response = await fetch("/api/models/local");
     const data = await response.json();
     const models = data.models || [];
+    state.localModels = models;
+    state.downloadedModelNames = modelNameSet(models);
     el.localModelPath.innerHTML = "";
 
     if (!models.length) {
@@ -331,6 +862,9 @@ async function refreshModels() {
       el.localModelPath.value = previousSelection;
     }
     renderModelStatus(data.status);
+    if (state.lastHfFiles.length) {
+      renderHfResults(state.lastHfRepoId, state.lastHfFiles);
+    }
   } catch (error) {
     setModelStatus(error.message || "Model scan failed", false);
   }
@@ -355,6 +889,24 @@ async function loadChatSessions() {
     state.chatSessions = [];
     renderChatHistorySelect();
   }
+}
+
+function modelNameSet(models) {
+  const names = new Set();
+  models.forEach((model) => {
+    [model.name, model.relative_path, model.path].filter(Boolean).forEach((value) => {
+      const normalized = String(value).replace(/\\/g, "/").toLowerCase();
+      names.add(normalized);
+      names.add(normalized.split("/").pop());
+    });
+  });
+  return names;
+}
+
+function isModelDownloaded(filename) {
+  const normalized = String(filename || "").replace(/\\/g, "/").toLowerCase();
+  const basename = normalized.split("/").pop();
+  return state.downloadedModelNames.has(normalized) || state.downloadedModelNames.has(basename);
 }
 
 function renderChatHistorySelect() {
@@ -390,6 +942,8 @@ async function loadSelectedChat() {
     }
     state.activeChatId = session.id;
     state.messages = normalizeSessionMessages(session.messages || []);
+    state.selectedMessageIds.clear();
+    state.editingMessageId = null;
     renderSessionMessages();
   } catch (error) {
     console.error(error);
@@ -397,6 +951,9 @@ async function loadSelectedChat() {
 }
 
 async function deleteActiveChat() {
+  if (!window.confirm("Delete the entire saved chat history for this conversation?")) {
+    return;
+  }
   if (!state.activeChatId) {
     clearChat();
     return;
@@ -417,37 +974,88 @@ function exportChatLogs() {
     chat_id: state.activeChatId,
     character_id: state.activeCharacter?.id || null,
     character_name: characterName(),
+    persona_id: state.activePersona?.id || null,
+    persona_name: personaName(),
     exported_at: new Date().toISOString(),
     messages: state.messages,
   };
+  downloadJson(
+    payload,
+    `${slugify(characterName())}-${new Date()
+    .toISOString()
+    .slice(0, 19)
+      .replace(/[:T]/g, "-")}.json`
+  );
+}
+
+function downloadJson(payload, filename) {
   const blob = new Blob([JSON.stringify(payload, null, 2)], {
     type: "application/json",
   });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `${slugify(characterName())}-${new Date()
-    .toISOString()
-    .slice(0, 19)
-    .replace(/[:T]/g, "-")}.json`;
+  link.download = filename;
   document.body.appendChild(link);
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
 }
 
+async function uploadSelectedAsset(input, statusWriter) {
+  const file = input.files?.[0];
+  if (!file) {
+    return null;
+  }
+  if (!["image/png", "image/jpeg"].includes(file.type)) {
+    statusWriter("Only PNG and JPG avatar images are supported.");
+    input.value = "";
+    return null;
+  }
+  statusWriter(`Storing ${file.name}.`);
+  const dataUrl = await readFileAsDataUrl(file);
+  const response = await fetch("/api/assets", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ filename: file.name, data_url: dataUrl }),
+  });
+  const payload = await response.json();
+  if (!response.ok) {
+    input.value = "";
+    throw new Error(payload.detail || "Could not store avatar image");
+  }
+  input.value = "";
+  return payload;
+}
+
+function readFileAsText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(reader.error || new Error("Could not read file"));
+    reader.readAsText(file);
+  });
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(reader.error || new Error("Could not read image"));
+    reader.readAsDataURL(file);
+  });
+}
+
 function renderSessionMessages() {
   el.chatMessages.innerHTML = "";
+  pruneSelectedMessages();
+  updateBulkActionBar();
   if (!state.messages.length) {
     resetChatToFirstMessage();
     return;
   }
-  state.messages.forEach((message) => {
-    appendMessage(
-      message.role,
-      message.content,
-      message.role === "user" ? "You" : characterName()
-    );
+  state.messages.forEach((message, index) => {
+    appendMessage(message, index);
   });
   scrollChatToBottom();
 }
@@ -456,9 +1064,12 @@ function normalizeSessionMessages(messages) {
   return messages
     .filter((message) => message.role !== "system" && message.content)
     .map((message) => ({
+      id: message.id || createMessageId(),
       role: message.role,
       content: message.content,
       timestamp: message.timestamp || new Date().toISOString(),
+      folded: Boolean(message.folded),
+      hidden: Boolean(message.hidden),
     }));
 }
 
@@ -577,19 +1188,25 @@ function setCharacterEditor(character) {
   el.characterEditorAvatarUrl.value = profile.avatar_url || profile.avatar_file || "";
   el.characterEditorDescription.value = profile.description || "";
   el.characterEditorPersonality.value = profile.personality || "";
+  el.characterEditorScenario.value = profile.scenario || "";
+  el.characterEditorExamples.value = profile.example_dialogue || "";
   el.characterEditorFirstMessage.value = profile.first_message || `Hello. I am ${profile.name}.`;
+  el.characterAvatarFile.value = "";
   updateCharacterEditorAvatar();
 }
 
 function editorCharacterPayload() {
+  const avatarValue = el.characterEditorAvatarUrl.value.trim();
   return {
     id: state.editingCharacterId,
     name: el.characterEditorName.value.trim() || "Assistant",
     description: el.characterEditorDescription.value.trim(),
     personality: el.characterEditorPersonality.value.trim(),
+    scenario: el.characterEditorScenario.value.trim(),
+    example_dialogue: el.characterEditorExamples.value.trim(),
     first_message: el.characterEditorFirstMessage.value.trim(),
-    avatar_url: el.characterEditorAvatarUrl.value.trim(),
-    avatar_file: "",
+    avatar_url: avatarValue.startsWith("/api/assets/") ? "" : avatarValue,
+    avatar_file: avatarValue.startsWith("/api/assets/") ? avatarValue : "",
   };
 }
 
@@ -629,6 +1246,7 @@ function applyCharacter(character, options = { resetChat: true }) {
   el.characterName.value = profile.name;
   el.characterAvatar.value = profile.avatar_url || profile.avatar_file || "";
   updateCharacterPreview();
+  updateChatBackground();
   loadChatSessions();
   if (options.resetChat) {
     clearChat();
@@ -640,14 +1258,291 @@ function normalizeCharacter(character) {
     ...DEFAULT_CHARACTER,
     ...character,
     name: character?.name || DEFAULT_CHARACTER.name,
+    description: character?.description || "",
+    personality: character?.personality || "",
+    scenario: character?.scenario || "",
+    example_dialogue: character?.example_dialogue || "",
     first_message:
       character?.first_message || `Hello. I am ${character?.name || DEFAULT_CHARACTER.name}.`,
+    avatar_url: character?.avatar_url || "",
+    avatar_file: character?.avatar_file || "",
   };
 }
 
 function updateCharacterEditorAvatar() {
   const name = el.characterEditorName.value.trim() || "Assistant";
   renderAvatar(el.characterEditorAvatar, el.characterEditorAvatarUrl.value.trim(), name);
+}
+
+async function importCharacterFile() {
+  const file = el.importCharacterFile.files?.[0];
+  if (!file) {
+    return;
+  }
+  setCharacterSaveStatus(`Importing ${file.name}.`);
+  try {
+    const payload = JSON.parse(await readFileAsText(file));
+    const response = await fetch("/api/characters/import", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const imported = await response.json();
+    if (!response.ok) {
+      throw new Error(imported.detail || "Could not import character");
+    }
+    setCharacterEditor(imported);
+    applyCharacter(imported, { resetChat: false });
+    await loadCharacters();
+    setCharacterSaveStatus(`Imported ${imported.name}.`);
+  } catch (error) {
+    setCharacterSaveStatus(error.message || "Could not import character.");
+  } finally {
+    el.importCharacterFile.value = "";
+  }
+}
+
+async function exportCharacterCard() {
+  const characterId = state.editingCharacterId || state.activeCharacter?.id;
+  if (!characterId) {
+    downloadJson(portableCharacterPayload(editorCharacterPayload()), `${slugify(characterName())}.json`);
+    return;
+  }
+  try {
+    const response = await fetch(`/api/characters/${encodeURIComponent(characterId)}/export`);
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.detail || "Could not export character");
+    }
+    const name = payload?.data?.name || characterName();
+    downloadJson(payload, `${slugify(name)}.json`);
+    setCharacterSaveStatus(`Exported ${name}.`);
+  } catch (error) {
+    setCharacterSaveStatus(error.message || "Could not export character.");
+  }
+}
+
+function portableCharacterPayload(profile) {
+  return {
+    spec: "chara_card_v2",
+    spec_version: "2.0",
+    data: {
+      name: profile.name,
+      description: profile.description,
+      personality: profile.personality,
+      scenario: profile.scenario,
+      first_mes: profile.first_message,
+      mes_example: profile.example_dialogue,
+      avatar: profile.avatar_file || profile.avatar_url,
+      creator_notes: "Exported from SweetrollLM.",
+      alternate_greetings: [],
+      tags: [],
+      creator: "SweetrollLM",
+      character_version: "1.0",
+    },
+  };
+}
+
+async function handleCharacterAvatarFile() {
+  try {
+    const asset = await uploadSelectedAsset(el.characterAvatarFile, setCharacterSaveStatus);
+    if (!asset) {
+      return;
+    }
+    el.characterEditorAvatarUrl.value = asset.url;
+    updateCharacterEditorAvatar();
+    setCharacterSaveStatus(`Stored avatar ${asset.filename}.`);
+  } catch (error) {
+    setCharacterSaveStatus(error.message || "Could not store avatar image.");
+  }
+}
+
+async function loadPersonas() {
+  try {
+    const response = await fetch("/api/personas");
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.detail || "Could not load personas");
+    }
+    state.personas = data;
+    if (!state.activePersona && state.personas.length) {
+      const defaultPersona = state.personas.find((persona) => persona.is_default);
+      applyPersona(defaultPersona || state.personas[0], { renderList: false });
+    }
+    renderPersonaSelect();
+    renderPersonaList();
+  } catch (error) {
+    state.personas = [];
+    renderPersonaSelect();
+    renderPersonaEmpty(error.message || "Could not load personas.");
+  }
+}
+
+function renderPersonaSelect() {
+  el.personaSelect.innerHTML = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "No Persona";
+  el.personaSelect.appendChild(placeholder);
+
+  state.personas.forEach((persona) => {
+    const option = document.createElement("option");
+    option.value = persona.id;
+    option.textContent = persona.is_default ? `${persona.name} (Default)` : persona.name;
+    el.personaSelect.appendChild(option);
+  });
+
+  el.personaSelect.value = state.activePersona?.id || "";
+}
+
+function renderPersonaList() {
+  el.personaList.innerHTML = "";
+  if (!state.personas.length) {
+    renderPersonaEmpty("No user personas yet.");
+    return;
+  }
+
+  state.personas.forEach((persona) => {
+    const button = document.createElement("button");
+    button.className = "profile-row";
+    if (state.activePersona?.id === persona.id) {
+      button.classList.add("active");
+    }
+    button.type = "button";
+
+    const avatar = document.createElement("div");
+    avatar.className = "avatar";
+    renderAvatar(avatar, persona.avatar_url || persona.avatar_file, persona.name);
+
+    const copy = document.createElement("div");
+    const name = document.createElement("div");
+    name.className = "profile-name";
+    name.textContent = persona.is_default ? `${persona.name}  Default` : persona.name;
+    const meta = document.createElement("div");
+    meta.className = "profile-meta";
+    meta.textContent = persona.description || "No persona bio yet.";
+    copy.append(name, meta);
+
+    button.append(avatar, copy);
+    button.addEventListener("click", () => {
+      setPersonaEditor(persona);
+      applyPersona(persona);
+      renderPersonaList();
+    });
+    el.personaList.appendChild(button);
+  });
+}
+
+function renderPersonaEmpty(message) {
+  el.personaList.innerHTML = "";
+  const empty = document.createElement("div");
+  empty.className = "empty-state";
+  empty.textContent = message;
+  el.personaList.appendChild(empty);
+}
+
+function setPersonaEditor(persona) {
+  const profile = normalizePersona(persona);
+  state.editingPersonaId = profile.id;
+  el.personaEditorMode.textContent = profile.id ? "Saved" : "Draft";
+  el.personaEditorName.value = profile.name;
+  el.personaEditorAvatarUrl.value = profile.avatar_url || profile.avatar_file || "";
+  el.personaEditorDescription.value = profile.description || "";
+  el.personaDefault.checked = Boolean(profile.is_default);
+  el.personaAvatarFile.value = "";
+  updatePersonaEditorAvatar();
+}
+
+function editorPersonaPayload() {
+  const avatarValue = el.personaEditorAvatarUrl.value.trim();
+  return {
+    id: state.editingPersonaId,
+    name: el.personaEditorName.value.trim() || "User",
+    description: el.personaEditorDescription.value.trim(),
+    avatar_url: avatarValue.startsWith("/api/assets/") ? "" : avatarValue,
+    avatar_file: avatarValue.startsWith("/api/assets/") ? avatarValue : "",
+    is_default: el.personaDefault.checked,
+  };
+}
+
+async function savePersonaCard() {
+  const payload = editorPersonaPayload();
+  el.savePersona.disabled = true;
+  setPersonaSaveStatus("Saving persona.");
+  try {
+    const response = await fetch("/api/personas", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const saved = await response.json();
+    if (!response.ok) {
+      throw new Error(saved.detail || "Could not save persona");
+    }
+    setPersonaEditor(saved);
+    applyPersona(saved, { renderList: false });
+    await loadPersonas();
+    setPersonaSaveStatus(`Saved ${saved.name}.`);
+  } catch (error) {
+    setPersonaSaveStatus(error.message || "Could not save persona.");
+  } finally {
+    el.savePersona.disabled = false;
+  }
+}
+
+function applyPersona(persona, options = { renderList: true }) {
+  const profile = normalizePersona(persona);
+  state.activePersona = profile.id ? profile : null;
+  el.personaSelect.value = profile.id || "";
+  if (options.renderList !== false) {
+    renderPersonaList();
+  }
+  if (options.renderMessages !== false && state.messages.length) {
+    renderSessionMessages();
+  }
+}
+
+function selectPersona() {
+  const persona = state.personas.find((item) => item.id === el.personaSelect.value);
+  applyPersona(persona || DEFAULT_PERSONA);
+  if (persona) {
+    setPersonaEditor(persona);
+  }
+}
+
+function normalizePersona(persona) {
+  return {
+    ...DEFAULT_PERSONA,
+    ...persona,
+    name: persona?.name || DEFAULT_PERSONA.name,
+    description: persona?.description || "",
+    avatar_url: persona?.avatar_url || "",
+    avatar_file: persona?.avatar_file || "",
+    is_default: Boolean(persona?.is_default),
+  };
+}
+
+function updatePersonaEditorAvatar() {
+  const name = el.personaEditorName.value.trim() || "User";
+  renderAvatar(el.personaEditorAvatar, el.personaEditorAvatarUrl.value.trim(), name);
+}
+
+async function handlePersonaAvatarFile() {
+  try {
+    const asset = await uploadSelectedAsset(el.personaAvatarFile, setPersonaSaveStatus);
+    if (!asset) {
+      return;
+    }
+    el.personaEditorAvatarUrl.value = asset.url;
+    updatePersonaEditorAvatar();
+    setPersonaSaveStatus(`Stored avatar ${asset.filename}.`);
+  } catch (error) {
+    setPersonaSaveStatus(error.message || "Could not store avatar image.");
+  }
+}
+
+function setPersonaSaveStatus(message) {
+  el.personaSaveStatus.textContent = message;
 }
 
 async function loadLorebooks() {
@@ -860,6 +1755,18 @@ function updateLorebookStatus() {
 async function searchHfModels(event) {
   event.preventDefault();
   const repo = el.hfRepoInput.value.trim();
+  await performHfSearch(repo);
+}
+
+async function searchCookbookModel(repo) {
+  if (!repo) {
+    return;
+  }
+  el.hfRepoInput.value = repo;
+  await performHfSearch(repo);
+}
+
+async function performHfSearch(repo) {
   if (!repo) {
     renderEmptyHfState("Enter a Hugging Face repo id like owner/model-GGUF.");
     return;
@@ -882,6 +1789,8 @@ async function searchHfModels(event) {
 }
 
 function renderHfResults(repoId, files) {
+  state.lastHfRepoId = repoId;
+  state.lastHfFiles = files;
   el.hfResults.innerHTML = "";
   if (!files.length) {
     renderEmptyHfState("No .gguf files were found in this repository.");
@@ -907,10 +1816,16 @@ function renderHfResults(repoId, files) {
     }
 
     const button = document.createElement("button");
-    button.className = "secondary-button";
     button.type = "button";
-    button.textContent = "Download";
-    button.addEventListener("click", () => startModelDownload(repoId, file.filename, button));
+    if (isModelDownloaded(file.filename)) {
+      button.className = "secondary-button downloaded-button";
+      button.disabled = true;
+      button.textContent = "✓ Downloaded";
+    } else {
+      button.className = "secondary-button";
+      button.textContent = "Download";
+      button.addEventListener("click", () => startModelDownload(repoId, file.filename, button));
+    }
 
     copy.append(name, meta);
     row.append(copy, button);
@@ -981,6 +1896,7 @@ function connectDownloadProgress(jobId) {
       state.downloadSource = null;
       if (payload.status === "completed") {
         refreshModels();
+        scheduleDownloadProgressHide();
       }
     }
   };
@@ -1000,7 +1916,12 @@ function connectDownloadProgress(jobId) {
 }
 
 function showDownloadProgress(payload) {
+  if (state.downloadHideTimer) {
+    window.clearTimeout(state.downloadHideTimer);
+    state.downloadHideTimer = null;
+  }
   el.downloadProgressPanel.classList.remove("hidden");
+  el.downloadProgressPanel.classList.remove("download-progress-closing");
   const percent = Number(payload.percent || 0);
   const visualPercent =
     payload.status === "downloading" && percent === 0 ? 6 : Math.min(percent, 100);
@@ -1014,6 +1935,23 @@ function showDownloadProgress(payload) {
   el.downloadStatusText.textContent = payload.message || statusLabel(payload.status);
   el.downloadSpeedText.textContent = `${formatBytes(payload.speed_bytes_s || 0)}/s`;
   el.downloadProgressText.textContent = `${percent.toFixed(1)}% - ${bytesLabel}`;
+  if (payload.status === "completed" || percent >= 100) {
+    scheduleDownloadProgressHide();
+  }
+}
+
+function scheduleDownloadProgressHide() {
+  if (state.downloadHideTimer) {
+    window.clearTimeout(state.downloadHideTimer);
+  }
+  state.downloadHideTimer = window.setTimeout(() => {
+    el.downloadProgressPanel.classList.add("download-progress-closing");
+    state.downloadHideTimer = window.setTimeout(() => {
+      el.downloadProgressPanel.classList.add("hidden");
+      el.downloadProgressPanel.classList.remove("download-progress-closing");
+      state.downloadHideTimer = null;
+    }, 260);
+  }, 1400);
 }
 
 function statusLabel(status) {
@@ -1029,6 +1967,164 @@ function statusLabel(status) {
   return "Downloading model";
 }
 
+async function generateImageFromExtension() {
+  const prompt = el.imagePrompt.value.trim();
+  if (!prompt || state.imageGenerating) {
+    el.imageGenerationStatus.textContent = prompt
+      ? "Image generation is already running."
+      : "Enter an image prompt first.";
+    return;
+  }
+
+  state.imageGenerating = true;
+  el.generateImage.disabled = true;
+  el.extensionStatus.textContent = "Generating";
+  el.imageGenerationStatus.textContent = "Submitting image request.";
+
+  try {
+    const response = await fetch("/api/extensions/image/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        provider: el.imageProvider.value,
+        endpoint: el.imageEndpoint.value.trim(),
+        model: el.imageModel.value.trim(),
+        prompt,
+        negative_prompt: el.imageNegativePrompt.value.trim(),
+        aspect_ratio: el.imageAspectRatio.value,
+        steps: Number(el.imageSteps.value) || 24,
+      }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload.detail || "Image generation request failed");
+    }
+
+    el.imageGenerationStatus.textContent = payload.message || "Image request completed.";
+    el.extensionStatus.textContent =
+      payload.status === "error" ? "Needs attention" : "Ready";
+
+    if (payload.markdown) {
+      await appendExtensionMessage(payload.markdown);
+    }
+  } catch (error) {
+    el.extensionStatus.textContent = "Error";
+    el.imageGenerationStatus.textContent = error.message;
+  } finally {
+    state.imageGenerating = false;
+    el.generateImage.disabled = false;
+  }
+}
+
+async function appendExtensionMessage(content) {
+  const message = {
+    id: createMessageId(),
+    role: "assistant",
+    content,
+    timestamp: new Date().toISOString(),
+    folded: false,
+    hidden: false,
+  };
+  state.messages.push(message);
+  appendMessage(message, state.messages.length - 1);
+  await persistActiveChat();
+}
+
+async function handleImageAttachment(file) {
+  if (!file) {
+    return;
+  }
+  if (!file.type.startsWith("image/")) {
+    el.visionCaptionStatus.textContent = "Attach a PNG, JPG, WebP, or GIF image.";
+    return;
+  }
+  if (!state.extensionsOpen) {
+    toggleExtensionsDrawer();
+  }
+
+  el.extensionStatus.textContent = "Captioning";
+  el.visionCaptionStatus.textContent = `Reading ${file.name}.`;
+
+  try {
+    const dataUrl = await readFileAsDataUrl(file);
+    state.visionAttachment = {
+      filename: file.name,
+      dataUrl,
+      caption: "Captioning in progress...",
+    };
+    renderVisionAttachmentPreview();
+
+    const response = await fetch("/api/extensions/vision/caption", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        provider: el.visionProvider.value,
+        endpoint: el.visionEndpoint.value.trim(),
+        filename: file.name,
+        data_url: dataUrl,
+      }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload.detail || "Vision caption request failed");
+    }
+
+    const caption = payload.caption || `The user attached ${file.name}.`;
+    state.visionContext = `Attached image "${file.name}": ${caption}`;
+    state.visionAttachment = {
+      filename: file.name,
+      dataUrl,
+      caption,
+      status: payload.status || "completed",
+    };
+    renderVisionAttachmentPreview();
+    el.extensionStatus.textContent = payload.status === "error" ? "Ready" : "Ready";
+    el.visionCaptionStatus.textContent =
+      payload.message || "Image context is active for the next generations.";
+  } catch (error) {
+    state.visionContext = "";
+    el.extensionStatus.textContent = "Error";
+    el.visionCaptionStatus.textContent = error.message;
+    renderVisionAttachmentPreview();
+  }
+}
+
+function renderVisionAttachmentPreview() {
+  el.visionAttachmentPreview.innerHTML = "";
+  if (!state.visionAttachment) {
+    el.visionAttachmentPreview.classList.add("hidden");
+    return;
+  }
+
+  const image = document.createElement("img");
+  image.src = state.visionAttachment.dataUrl;
+  image.alt = state.visionAttachment.filename;
+
+  const copy = document.createElement("div");
+  copy.className = "attachment-copy";
+  const title = document.createElement("strong");
+  title.textContent = state.visionAttachment.filename;
+  const caption = document.createElement("p");
+  caption.textContent = state.visionAttachment.caption || "No caption yet.";
+  copy.append(title, caption);
+
+  const clear = document.createElement("button");
+  clear.className = "message-action";
+  clear.type = "button";
+  clear.textContent = "Clear";
+  clear.addEventListener("click", clearVisionContext);
+
+  el.visionAttachmentPreview.append(image, copy, clear);
+  el.visionAttachmentPreview.classList.remove("hidden");
+}
+
+function clearVisionContext() {
+  state.visionContext = "";
+  state.visionAttachment = null;
+  renderVisionAttachmentPreview();
+  el.visionCaptionStatus.textContent = "Visual context cleared.";
+}
+
 async function sendMessage(event) {
   event.preventDefault();
   const content = el.messageInput.value.trim();
@@ -1038,40 +2134,62 @@ async function sendMessage(event) {
 
   el.messageInput.value = "";
   autosizeComposer();
-  appendMessage("user", content, "You");
-  state.messages.push({
+  const userMessage = {
+    id: createMessageId(),
     role: "user",
     content,
     timestamp: new Date().toISOString(),
-  });
+    folded: false,
+    hidden: false,
+  };
+  state.messages.push(userMessage);
+  appendMessage(userMessage, state.messages.length - 1);
 
   const assistantBubble = appendThinkingMessage(characterName());
   state.activeAssistantText = "";
-  state.activeWriter = new Typewriter((text) => {
-    state.activeAssistantText = text;
-    assistantBubble.innerHTML = window.renderMarkdown(text);
-    scrollChatToBottom();
-  });
+  state.activeWriter = null;
 
   setBusy(true);
   state.streaming = true;
 
   try {
-    await streamAssistantResponse(buildChatPayload());
-    state.activeWriter.flush();
-    if (state.activeAssistantText.trim()) {
-      state.messages.push({
-        role: "assistant",
-        content: state.activeAssistantText,
-        timestamp: new Date().toISOString(),
+    if (el.textStreaming.checked) {
+      state.activeWriter = new Typewriter((text) => {
+        state.activeAssistantText = text;
+        assistantBubble.innerHTML = window.renderMarkdown(text);
+        scrollChatToBottom();
       });
+      await streamAssistantResponse(buildChatPayload());
+      state.activeWriter.flush();
+    } else {
+      const result = await completeAssistantResponse(buildChatPayload());
+      state.activeChatId = result.chat_id || state.activeChatId;
+      state.activeAssistantText = result.text || "";
+      cleanupThinkingIndicator();
+      assistantBubble.innerHTML = window.renderMarkdown(state.activeAssistantText);
+      scrollChatToBottom();
+    }
+
+    const assistantText = state.activeAssistantText.trim();
+    if (assistantText) {
+      state.messages.push({
+        id: createMessageId(),
+        role: "assistant",
+        content: assistantText,
+        timestamp: new Date().toISOString(),
+        folded: false,
+        hidden: false,
+      });
+      renderSessionMessages();
     } else if (state.thinkingActive) {
       removeThinkingIndicator();
     }
     window.setTimeout(loadChatSessions, 700);
   } catch (error) {
     cleanupThinkingIndicator();
-    state.activeWriter.flush();
+    if (state.activeWriter) {
+      state.activeWriter.flush();
+    }
     assistantBubble.innerHTML = window.renderMarkdown(`**Error:** ${error.message}`);
   } finally {
     state.activeWriter = null;
@@ -1082,6 +2200,19 @@ async function sendMessage(event) {
     setBusy(false);
     el.messageInput.focus();
   }
+}
+
+async function completeAssistantResponse(payload) {
+  const response = await fetch("/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.detail || "Chat request failed");
+  }
+  return data;
 }
 
 async function streamAssistantResponse(payload) {
@@ -1141,11 +2272,13 @@ function buildChatPayload() {
   const payload = {
     source,
     chat_id: state.activeChatId,
-    messages: state.messages,
+    messages: serializeMessagesForBackend(state.messages),
     system_prompt: el.systemPrompt.value,
     character_id: state.activeCharacter?.id || null,
+    persona_id: state.activePersona?.id || null,
     lorebook_id: state.activeLorebook?.id || null,
     lorebook_enabled: Boolean(state.activeLorebook?.id && state.lorebookEnabled),
+    vision_context: state.visionContext || "",
     local: {
       template: el.promptTemplate.value,
     },
@@ -1155,27 +2288,43 @@ function buildChatPayload() {
   };
 
   if (source === "cloud") {
+    const provider = activeApiProvider();
     payload.cloud = {
-      provider: el.cloudProvider.value,
-      base_url: el.baseUrl.value,
-      model: el.cloudModel.value,
-      api_key: el.apiKey.value,
+      provider: provider ? inferCloudProvider(provider.base_url) : el.cloudProvider.value,
+      base_url: provider?.base_url || el.baseUrl.value,
+      model: provider?.default_model || el.cloudModel.value,
+      api_key: provider?.api_key || el.apiKey.value,
     };
   }
 
   return payload;
 }
 
-function appendMessage(role, content, name) {
+function appendMessage(message, index) {
+  const normalized = ensureClientMessage(message);
+  const role = normalized.role;
+  const name = role === "user" ? personaName() : characterName();
   const row = document.createElement("article");
   row.className = `message-row ${role}`;
+  row.dataset.messageId = normalized.id;
+  row.classList.toggle("message-collapsed", Boolean(normalized.folded));
+  row.classList.toggle("message-hidden", Boolean(normalized.hidden));
+
+  const selector = document.createElement("input");
+  selector.className = "message-select";
+  selector.type = "checkbox";
+  selector.title = "Select message";
+  selector.checked = state.selectedMessageIds.has(normalized.id);
+  selector.addEventListener("change", () => {
+    toggleMessageSelection(normalized.id, selector.checked);
+  });
 
   const avatar = document.createElement("div");
   avatar.className = "avatar";
   renderAvatar(
     avatar,
-    role === "assistant" ? characterAvatar() : "",
-    role === "assistant" ? name : "You"
+    role === "assistant" ? characterAvatar() : personaAvatar(),
+    role === "assistant" ? name : personaName()
   );
 
   const bubble = document.createElement("div");
@@ -1183,26 +2332,257 @@ function appendMessage(role, content, name) {
 
   const label = document.createElement("div");
   label.className = "message-name";
-  label.textContent = name;
+  const labelText = document.createElement("span");
+  labelText.textContent = name;
+  label.append(labelText, createMessageToolbar(normalized, index));
 
   const body = document.createElement("div");
   body.className = "message-content";
-  body.innerHTML = window.renderMarkdown(content);
+  if (state.editingMessageId === normalized.id) {
+    renderMessageEditor(body, normalized);
+  } else if (normalized.hidden) {
+    body.textContent = "Message hidden";
+  } else {
+    body.innerHTML = window.renderMarkdown(normalized.content);
+  }
 
   bubble.append(label, body);
-  row.append(avatar, bubble);
+  row.append(selector, avatar, bubble);
   el.chatMessages.appendChild(row);
   scrollChatToBottom();
   return body;
 }
 
+function createMessageToolbar(message, index) {
+  const toolbar = document.createElement("div");
+  toolbar.className = "message-toolbar";
+
+  toolbar.append(
+    messageActionButton("Edit", () => startMessageEdit(message.id)),
+    messageActionButton("Copy", () => copyMessageText(message.content)),
+    messageActionButton(message.folded ? "Expand" : "Fold", () =>
+      toggleMessageFold(message.id)
+    ),
+    messageActionButton(message.hidden ? "Unhide" : "Hide", () =>
+      toggleMessageHidden(message.id)
+    )
+  );
+  return toolbar;
+}
+
+function messageActionButton(label, handler) {
+  const button = document.createElement("button");
+  button.className = "message-action";
+  button.type = "button";
+  button.textContent = label;
+  button.addEventListener("click", handler);
+  return button;
+}
+
+function renderMessageEditor(body, message) {
+  const textarea = document.createElement("textarea");
+  textarea.className = "input textarea message-edit-textarea";
+  textarea.value = message.content;
+
+  const actions = document.createElement("div");
+  actions.className = "message-edit-actions";
+  const cancel = document.createElement("button");
+  cancel.className = "secondary-button";
+  cancel.type = "button";
+  cancel.textContent = "Cancel";
+  cancel.addEventListener("click", () => {
+    state.editingMessageId = null;
+    renderSessionMessages();
+  });
+
+  const save = document.createElement("button");
+  save.className = "primary-button";
+  save.type = "button";
+  save.textContent = "Save";
+  save.addEventListener("click", () => saveMessageEdit(message.id, textarea.value));
+
+  actions.append(cancel, save);
+  body.append(textarea, actions);
+  window.setTimeout(() => {
+    textarea.focus();
+    textarea.selectionStart = textarea.value.length;
+    textarea.selectionEnd = textarea.value.length;
+  }, 0);
+}
+
+function startMessageEdit(messageId) {
+  state.editingMessageId = messageId;
+  renderSessionMessages();
+}
+
+async function saveMessageEdit(messageId, value) {
+  const message = findMessage(messageId);
+  const content = value.trim();
+  if (!message || !content) {
+    return;
+  }
+  message.content = content;
+  message.timestamp = new Date().toISOString();
+  state.editingMessageId = null;
+  renderSessionMessages();
+  await persistActiveChat();
+}
+
+async function copyMessageText(content) {
+  try {
+    await navigator.clipboard.writeText(content);
+  } catch {
+    const textarea = document.createElement("textarea");
+    textarea.value = content;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    textarea.remove();
+  }
+}
+
+function toggleMessageFold(messageId) {
+  const message = findMessage(messageId);
+  if (!message) {
+    return;
+  }
+  message.folded = !message.folded;
+  renderSessionMessages();
+}
+
+function toggleMessageHidden(messageId) {
+  const message = findMessage(messageId);
+  if (!message) {
+    return;
+  }
+  message.hidden = !message.hidden;
+  renderSessionMessages();
+}
+
+function toggleMessageSelection(messageId, selected) {
+  if (selected) {
+    state.selectedMessageIds.add(messageId);
+  } else {
+    state.selectedMessageIds.delete(messageId);
+  }
+  updateBulkActionBar();
+}
+
+function updateBulkActionBar() {
+  pruneSelectedMessages();
+  const count = state.selectedMessageIds.size;
+  el.bulkActionBar.classList.toggle("hidden", count === 0);
+  el.bulkSelectionCount.textContent = `${count} selected`;
+}
+
+function pruneSelectedMessages() {
+  const liveIds = new Set(state.messages.map((message) => message.id));
+  Array.from(state.selectedMessageIds).forEach((messageId) => {
+    if (!liveIds.has(messageId)) {
+      state.selectedMessageIds.delete(messageId);
+    }
+  });
+}
+
+async function deleteSelectedMessages() {
+  if (!state.selectedMessageIds.size) {
+    return;
+  }
+  const selected = new Set(state.selectedMessageIds);
+  state.messages = state.messages.filter((message) => !selected.has(message.id));
+  state.selectedMessageIds.clear();
+  state.editingMessageId = null;
+  if (!state.messages.length) {
+    resetChatToFirstMessage();
+  } else {
+    renderSessionMessages();
+  }
+  await persistActiveChat();
+}
+
+async function persistActiveChat() {
+  try {
+    const response = await fetch("/api/chats", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: state.activeChatId,
+        character_id: state.activeCharacter?.id || null,
+        messages: serializeMessagesForBackend(state.messages),
+      }),
+    });
+    const saved = await response.json();
+    if (!response.ok) {
+      throw new Error(saved.detail || "Could not save chat");
+    }
+    state.activeChatId = saved.id;
+    window.setTimeout(loadChatSessions, 250);
+    return saved;
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+
+function serializeMessagesForBackend(messages) {
+  return messages
+    .filter((message) => message.role && message.content?.trim())
+    .map((message) => ({
+      role: message.role,
+      content: message.content,
+      timestamp: message.timestamp || new Date().toISOString(),
+    }));
+}
+
+function findMessage(messageId) {
+  return state.messages.find((message) => message.id === messageId);
+}
+
+function ensureClientMessage(message) {
+  if (!message.id) {
+    message.id = createMessageId();
+  }
+  if (!message.timestamp) {
+    message.timestamp = new Date().toISOString();
+  }
+  message.folded = Boolean(message.folded);
+  message.hidden = Boolean(message.hidden);
+  return message;
+}
+
+function createMessageId() {
+  if (window.crypto?.randomUUID) {
+    return `msg-${window.crypto.randomUUID()}`;
+  }
+  return `msg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
 function appendThinkingMessage(name) {
-  const body = appendMessage("assistant", "", name);
+  const row = document.createElement("article");
+  row.className = "message-row assistant";
+
+  const avatar = document.createElement("div");
+  avatar.className = "avatar";
+  renderAvatar(avatar, characterAvatar(), name);
+
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+
+  const header = document.createElement("div");
+  header.className = "message-name";
+  const labelText = document.createElement("span");
+  labelText.textContent = name;
+  header.appendChild(labelText);
+
+  const body = document.createElement("div");
+  body.className = "message-content";
   body.classList.add("thinking-content", "animate-pulse");
   body.innerHTML = "";
 
-  const label = document.createElement("span");
-  label.textContent = `${name} is thinking`;
+  const thinkingLabel = document.createElement("span");
+  thinkingLabel.textContent = `${name} is thinking`;
 
   const dots = document.createElement("span");
   dots.className = "typing-dots";
@@ -1211,9 +2591,12 @@ function appendThinkingMessage(name) {
     dots.appendChild(document.createElement("span"));
   }
 
-  body.append(label, dots);
+  body.append(thinkingLabel, dots);
+  bubble.append(header, body);
+  row.append(avatar, bubble);
+  el.chatMessages.appendChild(row);
   state.thinkingBody = body;
-  state.thinkingRow = body.closest(".message-row");
+  state.thinkingRow = row;
   state.thinkingActive = true;
   scrollChatToBottom();
   return body;
@@ -1247,25 +2630,47 @@ function removeThinkingIndicator() {
 function clearChat() {
   state.activeChatId = null;
   el.chatHistorySelect.value = "";
+  state.selectedMessageIds.clear();
+  state.editingMessageId = null;
   resetChatToFirstMessage();
 }
 
 function resetChatToFirstMessage() {
   state.messages = [];
   el.chatMessages.innerHTML = "";
+  state.selectedMessageIds.clear();
+  state.editingMessageId = null;
+  updateBulkActionBar();
   const content = firstMessage();
-  appendMessage("assistant", content, characterName());
-  state.messages.push({
+  const first = {
+    id: createMessageId(),
     role: "assistant",
     content,
     timestamp: new Date().toISOString(),
-  });
+    folded: false,
+    hidden: false,
+  };
+  state.messages.push(first);
+  appendMessage(first, 0);
   scrollChatToBottom();
 }
 
 function updateCharacterPreview() {
   el.chatTitle.textContent = characterName();
   renderAvatar(el.characterAvatarPreview, characterAvatar(), characterName());
+  updateChatBackground();
+}
+
+function updateChatBackground() {
+  const enabled = el.characterBackgrounds?.checked;
+  const avatar = characterAvatar();
+  if (!enabled || !avatar) {
+    el.chatBackdrop.classList.remove("active");
+    el.chatBackdrop.style.backgroundImage = "";
+    return;
+  }
+  el.chatBackdrop.style.backgroundImage = `url("${avatar.replace(/"/g, '\\"')}")`;
+  el.chatBackdrop.classList.add("active");
 }
 
 function renderAvatar(target, avatarUrl, name) {
@@ -1294,6 +2699,14 @@ function characterName() {
 
 function characterAvatar() {
   return el.characterAvatar.value.trim();
+}
+
+function personaName() {
+  return state.activePersona?.name || "You";
+}
+
+function personaAvatar() {
+  return state.activePersona?.avatar_file || state.activePersona?.avatar_url || "";
 }
 
 function initials(name) {

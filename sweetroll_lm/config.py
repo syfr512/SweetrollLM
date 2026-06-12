@@ -33,6 +33,12 @@ class AppSettings:
     external_api_model: str = os.getenv("SWEETROLL_LM_EXTERNAL_API_MODEL", "local-model")
     external_api_key: str = os.getenv("SWEETROLL_LM_EXTERNAL_API_KEY", "")
     native_llama_enabled: bool = _env_bool("SWEETROLL_LM_NATIVE_LLAMA_ENABLED", True)
+    max_response_tokens: int = int(os.getenv("SWEETROLL_LM_MAX_RESPONSE_TOKENS", "2048"))
+    max_context_tokens: int = int(os.getenv("SWEETROLL_LM_MAX_CONTEXT_TOKENS", "8192"))
+    context_safety_tokens: int = int(os.getenv("SWEETROLL_LM_CONTEXT_SAFETY_TOKENS", "256"))
+    generation_timeout_seconds: float = float(
+        os.getenv("SWEETROLL_LM_GENERATION_TIMEOUT_SECONDS", "300")
+    )
     koboldcpp_executable_path: str = os.getenv("SWEETROLL_LM_KOBOLDCPP_PATH", "")
     koboldcpp_host: str = os.getenv("SWEETROLL_LM_KOBOLDCPP_HOST", "127.0.0.1")
     koboldcpp_port: int = int(os.getenv("SWEETROLL_LM_KOBOLDCPP_PORT", "5001"))
@@ -61,12 +67,32 @@ class AppSettings:
         return self.storage_dir / "chats"
 
     @property
+    def personas_dir(self) -> Path:
+        return self.storage_dir / "personas"
+
+    @property
     def lorebooks_dir(self) -> Path:
         return self.storage_dir / "lorebooks"
 
     @property
     def extensions_dir(self) -> Path:
         return self.storage_dir / "extensions"
+
+    @property
+    def assets_dir(self) -> Path:
+        return self.storage_dir / "assets"
+
+    @property
+    def logs_dir(self) -> Path:
+        return self.storage_dir / "logs"
+
+    @property
+    def app_log_path(self) -> Path:
+        return self.logs_dir / "sweetrolllm.log"
+
+    @property
+    def api_providers_path(self) -> Path:
+        return self.storage_dir / "api_providers.json"
 
 
 settings = AppSettings()

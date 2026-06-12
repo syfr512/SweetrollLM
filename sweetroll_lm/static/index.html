@@ -3,16 +3,39 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="SweetrollLM is a local-first AI roleplay client, SillyTavern alternative, and LM Studio alternative for offline GGUF chat, koboldcpp fallback inference, lorebooks, personas, and model management." />
+    <meta name="keywords" content="SweetrollLM, local AI client, SillyTavern alternative, LM Studio alternative, offline GGUF chat, koboldcpp, roleplay frontend, local LLM player" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="theme-color" content="#05070b" />
+    <meta name="application-name" content="SweetrollLM" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="SweetrollLM - Local AI Roleplay Client" />
+    <meta property="og:description" content="A polished local AI client blending SillyTavern character depth with LM Studio-style GGUF model management and adaptive koboldcpp fallback routing." />
+    <meta property="og:url" content="https://github.com/syfr512/Local-Tavern" />
+    <meta property="og:site_name" content="SweetrollLM" />
     <title>SweetrollLM</title>
     <link rel="stylesheet" href="/static/css/tailwind.css" />
     <script defer src="/static/js/markdown.js"></script>
     <script defer src="/static/js/app.js"></script>
   </head>
   <body>
+    <div id="startupOverlay" class="startup-overlay" aria-live="polite">
+      <div class="startup-card">
+        <div class="brand-mark startup-mark">SL</div>
+        <p class="startup-quote">"Let me guess, someone stole your sweetroll?"</p>
+        <div class="startup-loader" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <p id="startupStatus" class="startup-status">Warming the hearth...</p>
+      </div>
+    </div>
+
     <div id="appShell" class="app-shell">
       <aside id="settingsSidebar" class="sidebar">
         <div class="brand-row">
-          <div class="brand-mark">LT</div>
+          <div class="brand-mark">SL</div>
           <div class="brand-copy">
             <h1>SweetrollLM</h1>
             <p id="connectionStatus">Starting</p>
@@ -58,7 +81,22 @@
             <span class="badge">Online</span>
           </div>
           <label class="field">
-            <span>Provider</span>
+            <span>Active Registry Profile</span>
+            <select id="apiProviderSelect" class="input" data-cloud-field>
+              <option value="">Manual Cloud Fields</option>
+            </select>
+          </label>
+          <div id="apiProviderList" class="provider-list"></div>
+          <div class="panel-title">
+            <h2>Provider Editor</h2>
+            <button id="newApiProvider" class="ghost-button" type="button">New</button>
+          </div>
+          <label class="field">
+            <span>Profile Name</span>
+            <input id="apiProviderName" class="input" data-cloud-field value="OpenRouter Main" />
+          </label>
+          <label class="field">
+            <span>Provider Type</span>
             <select id="cloudProvider" class="input" data-cloud-field>
               <option value="openai">OpenAI</option>
               <option value="openrouter">OpenRouter</option>
@@ -77,6 +115,15 @@
             <span>API Key</span>
             <input id="apiKey" class="input" data-cloud-field type="password" autocomplete="off" />
           </label>
+          <label class="toggle-row switch-row">
+            <input id="apiProviderDefault" type="checkbox" data-cloud-field />
+            <span>Set as Active Default</span>
+          </label>
+          <div class="button-row">
+            <button id="saveApiProvider" class="primary-button" type="button">Save Provider</button>
+            <button id="deleteApiProvider" class="secondary-button danger-button" type="button">Delete</button>
+          </div>
+          <p id="apiProviderStatus" class="muted">Saved providers are local to storage/api_providers.json.</p>
         </section>
 
         <section class="panel">
@@ -96,6 +143,31 @@
           <label class="field">
             <span>Max Tokens</span>
             <input id="maxTokens" class="input" type="number" value="512" min="1" max="8192" />
+          </label>
+          <label class="toggle-row switch-row">
+            <input id="textStreaming" type="checkbox" checked />
+            <span>Text Streaming</span>
+          </label>
+          <label class="toggle-row switch-row">
+            <input id="characterBackgrounds" type="checkbox" checked />
+            <span>Character Chat Backgrounds</span>
+          </label>
+          <label class="field">
+            <span>Chat Transparency <strong id="chatTransparencyValue">82%</strong></span>
+            <input id="chatTransparency" class="range-input" type="range" min="0.1" max="1" step="0.05" value="0.82" />
+          </label>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title">
+            <h2>User Persona</h2>
+            <button id="openPersonaRegistry" class="ghost-button" type="button">Personas</button>
+          </div>
+          <label class="field">
+            <span>Active Persona</span>
+            <select id="personaSelect" class="input">
+              <option value="">Default Persona</option>
+            </select>
           </label>
         </section>
 
@@ -127,6 +199,7 @@
       </aside>
 
       <main class="chat-main">
+        <div id="chatBackdrop" class="chat-backdrop" aria-hidden="true"></div>
         <header class="chat-header">
           <div class="chat-heading">
             <button id="toggleSidebar" class="icon-button sidebar-toggle" type="button" title="Toggle sidebar" aria-label="Toggle settings sidebar" aria-controls="settingsSidebar" aria-expanded="true">
@@ -142,22 +215,153 @@
             </div>
           </div>
           <div class="chat-actions">
+            <button id="toggleExtensions" class="secondary-button" type="button" aria-expanded="false" aria-controls="extensionsDrawer">Extensions</button>
+            <button id="openConsoleLogs" class="secondary-button" type="button">View Console Logs</button>
             <select id="chatHistorySelect" class="input session-select" title="Past chats">
               <option value="">Past Chats</option>
             </select>
             <button id="exportChat" class="secondary-button" type="button">Export Logs</button>
-            <button id="deleteChat" class="secondary-button" type="button">Delete</button>
+            <button id="deleteChat" class="secondary-button danger-button" type="button">Delete Entire Chat</button>
             <button id="clearChat" class="secondary-button" type="button">Clear Chat</button>
           </div>
         </header>
 
+        <section id="extensionsDrawer" class="extensions-drawer hidden" aria-label="Creative extensions">
+          <div class="extensions-header">
+            <div>
+              <h3>Extensions</h3>
+              <p>Image generation and visual context connectors for the active chat.</p>
+            </div>
+            <span id="extensionStatus" class="badge">Ready</span>
+          </div>
+          <div class="extensions-grid">
+            <section class="extension-card">
+              <div class="panel-title">
+                <h2>Image Generation</h2>
+                <span class="badge badge-local">Media</span>
+              </div>
+              <div class="two-col">
+                <label class="field">
+                  <span>Backend</span>
+                  <select id="imageProvider" class="input">
+                    <option value="comfyui">ComfyUI /prompt</option>
+                    <option value="stable_diffusion">Stable Diffusion API</option>
+                    <option value="flux">Flux-Compatible</option>
+                    <option value="dalle3">DALL-E 3</option>
+                    <option value="custom">Custom JSON</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Aspect</span>
+                  <select id="imageAspectRatio" class="input">
+                    <option value="1:1">1:1 Square</option>
+                    <option value="4:3">4:3 Scene</option>
+                    <option value="3:4">3:4 Portrait</option>
+                    <option value="16:9">16:9 Wide</option>
+                    <option value="9:16">9:16 Tall</option>
+                    <option value="21:9">21:9 Cinematic</option>
+                  </select>
+                </label>
+              </div>
+              <label class="field">
+                <span>Endpoint</span>
+                <input id="imageEndpoint" class="input" placeholder="http://127.0.0.1:8188/prompt" />
+              </label>
+              <div class="two-col">
+                <label class="field">
+                  <span>Model</span>
+                  <input id="imageModel" class="input" placeholder="Optional backend model" />
+                </label>
+                <label class="field">
+                  <span>Steps</span>
+                  <input id="imageSteps" class="input" type="number" min="1" max="150" value="24" />
+                </label>
+              </div>
+              <label class="field">
+                <span>Prompt</span>
+                <textarea id="imagePrompt" class="input textarea compact-textarea" placeholder="Describe the image to generate"></textarea>
+              </label>
+              <label class="field">
+                <span>Negative Prompt</span>
+                <input id="imageNegativePrompt" class="input" placeholder="blur, low quality, artifacts" />
+              </label>
+              <div class="button-row">
+                <button id="generateImage" class="primary-button" type="button">Generate</button>
+                <p id="imageGenerationStatus" class="muted">Generated media is appended to the active chat.</p>
+              </div>
+            </section>
+
+            <section class="extension-card">
+              <div class="panel-title">
+                <h2>Vision Captioning</h2>
+                <span class="badge">VLM</span>
+              </div>
+              <div id="visionDropzone" class="dropzone" tabindex="0" role="button" aria-label="Attach image for vision context">
+                <strong>Drop an image here</strong>
+                <span>or use the attach button in the composer.</span>
+              </div>
+              <input id="visionImageInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden />
+              <label class="field">
+                <span>Vision Endpoint</span>
+                <input id="visionEndpoint" class="input" placeholder="http://127.0.0.1:11434/api/generate or custom VLM endpoint" />
+              </label>
+              <label class="field">
+                <span>Provider</span>
+                <select id="visionProvider" class="input">
+                  <option value="custom">Custom</option>
+                  <option value="llava">LLaVA</option>
+                  <option value="qwen-vl">Qwen-VL</option>
+                  <option value="openai">Vision API</option>
+                </select>
+              </label>
+              <div id="visionAttachmentPreview" class="attachment-preview hidden"></div>
+              <p id="visionCaptionStatus" class="muted">Caption context is injected invisibly into the next generations.</p>
+            </section>
+          </div>
+        </section>
+
         <section id="chatMessages" class="chat-messages" aria-live="polite"></section>
 
         <form id="chatForm" class="composer">
+          <button id="attachImage" class="icon-button attach-button" type="button" title="Attach image" aria-label="Attach image">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M21.4 11.6 12 21a6 6 0 0 1-8.5-8.5l9.8-9.8a4 4 0 1 1 5.7 5.7L9.4 18a2 2 0 1 1-2.8-2.8l8.8-8.8" />
+            </svg>
+          </button>
+          <input id="chatImageInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden />
           <textarea id="messageInput" class="composer-input" rows="1" placeholder="Message"></textarea>
           <button id="sendButton" class="send-button" type="submit">Send</button>
         </form>
       </main>
+    </div>
+
+    <div id="bulkActionBar" class="bulk-action-bar hidden" aria-live="polite">
+      <span id="bulkSelectionCount">0 selected</span>
+      <button id="deleteSelectedMessages" class="danger-button" type="button">Delete Selected</button>
+    </div>
+
+    <div id="console-logs-modal" class="modal-overlay hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="console-logs-title">
+      <div class="modal-window console-window">
+        <header class="modal-header">
+          <div>
+            <h2 id="console-logs-title">Console Logs</h2>
+            <p>Live backend output from the local SweetrollLM runtime.</p>
+          </div>
+          <div class="compact-actions button-row">
+            <button id="refreshConsoleLogs" class="secondary-button" type="button">Refresh</button>
+            <button id="closeConsoleLogs" class="icon-button close-button" type="button" title="Close" aria-label="Close console logs">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M18 6 6 18" />
+                <path d="m6 6 12 12" />
+              </svg>
+            </button>
+          </div>
+        </header>
+        <section class="console-body">
+          <pre id="consoleLogOutput" class="console-log-output">Loading logs...</pre>
+          <p id="consoleLogStatus" class="muted">Reading storage/logs/sweetrolllm.log</p>
+        </section>
+      </div>
     </div>
 
     <div id="model-market-modal" class="modal-overlay hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="model-market-title">
@@ -248,6 +452,77 @@
               <div class="empty-state">Search a Hugging Face GGUF repository to list quantized files.</div>
             </div>
           </section>
+
+          <section class="modal-card cookbook-card">
+            <div class="panel-title">
+              <h2>The Sweetroll Cookbook</h2>
+              <span class="badge">Roleplay Picks</span>
+            </div>
+            <div class="cookbook-grid">
+              <article class="cookbook-tier">
+                <div class="tier-header">
+                  <span class="tier-size">S</span>
+                  <div>
+                    <h3>Lightweight Tier</h3>
+                    <p>Under 8GB RAM</p>
+                  </div>
+                </div>
+                <p>Fast, hyper-efficient performance for legacy chips and slim laptops.</p>
+                <div class="cookbook-models">
+                  <button class="cookbook-search" type="button" data-repo="bartowski/google_gemma-3-4b-it-GGUF" title="Search in Marketplace">
+                    <span>Gemma 3 4B</span>
+                    <span aria-hidden="true">⌕</span>
+                  </button>
+                  <button class="cookbook-search" type="button" data-repo="bartowski/Llama-3.2-3B-Instruct-GGUF" title="Search in Marketplace">
+                    <span>Llama 3.2 3B</span>
+                    <span aria-hidden="true">⌕</span>
+                  </button>
+                </div>
+              </article>
+
+              <article class="cookbook-tier">
+                <div class="tier-header">
+                  <span class="tier-size">M</span>
+                  <div>
+                    <h3>Balanced Tier</h3>
+                    <p>16GB-24GB RAM</p>
+                  </div>
+                </div>
+                <p>Peak narrative prose fluidity and consistent character structural formatting.</p>
+                <div class="cookbook-models">
+                  <button class="cookbook-search" type="button" data-repo="bartowski/google_gemma-3-12b-it-GGUF" title="Search in Marketplace">
+                    <span>Gemma 4 12B</span>
+                    <span aria-hidden="true">⌕</span>
+                  </button>
+                  <button class="cookbook-search" type="button" data-repo="bartowski/Rocinante-12B-v1.1-GGUF" title="Search in Marketplace">
+                    <span>Rocinante X 12B</span>
+                    <span aria-hidden="true">⌕</span>
+                  </button>
+                </div>
+              </article>
+
+              <article class="cookbook-tier">
+                <div class="tier-header">
+                  <span class="tier-size">L</span>
+                  <div>
+                    <h3>Enthusiast Tier</h3>
+                    <p>32GB+ RAM</p>
+                  </div>
+                </div>
+                <p>Frontier-class multi-character state tracking and long context logic retention.</p>
+                <div class="cookbook-models">
+                  <button class="cookbook-search" type="button" data-repo="bartowski/google_gemma-3-27b-it-GGUF" title="Search in Marketplace">
+                    <span>Gemma 4 31B</span>
+                    <span aria-hidden="true">⌕</span>
+                  </button>
+                  <button class="cookbook-search" type="button" data-repo="bartowski/Qwen2.5-32B-Instruct-GGUF" title="Search in Marketplace">
+                    <span>Qwen 3.5 27B</span>
+                    <span aria-hidden="true">⌕</span>
+                  </button>
+                </div>
+              </article>
+            </div>
+          </section>
         </div>
       </div>
     </div>
@@ -271,8 +546,12 @@
           <section class="modal-card">
             <div class="panel-title">
               <h2>Saved Cards</h2>
-              <button id="newCharacter" class="ghost-button" type="button">New</button>
+              <div class="button-row compact-actions">
+                <button id="importCharacter" class="ghost-button" type="button">Import</button>
+                <button id="newCharacter" class="ghost-button" type="button">New</button>
+              </div>
             </div>
+            <input id="importCharacterFile" class="hidden" type="file" accept="application/json,.json" />
             <div id="characterList" class="profile-list">
               <div class="empty-state">No saved character cards yet.</div>
             </div>
@@ -295,6 +574,10 @@
               <input id="characterEditorAvatarUrl" class="input" placeholder="/static/img/avatar.png" />
             </label>
             <label class="field">
+              <span>Avatar Image</span>
+              <input id="characterAvatarFile" class="input" type="file" accept="image/png,image/jpeg" />
+            </label>
+            <label class="field">
               <span>Description</span>
               <textarea id="characterEditorDescription" class="input textarea compact-textarea" placeholder="Backstory, scenario role, physical details"></textarea>
             </label>
@@ -303,14 +586,87 @@
               <textarea id="characterEditorPersonality" class="input textarea compact-textarea" placeholder="Speech style, motivations, habits"></textarea>
             </label>
             <label class="field">
+              <span>Scenario</span>
+              <textarea id="characterEditorScenario" class="input textarea compact-textarea" placeholder="Current setting, relationship, or scene premise"></textarea>
+            </label>
+            <label class="field">
+              <span>Example Dialogue</span>
+              <textarea id="characterEditorExamples" class="input textarea compact-textarea" placeholder="{{char}}: ...&#10;{{user}}: ..."></textarea>
+            </label>
+            <label class="field">
               <span>First Message</span>
               <textarea id="characterEditorFirstMessage" class="input textarea compact-textarea">Hello. I am Aria.</textarea>
             </label>
             <div class="button-row">
               <button id="saveCharacter" class="primary-button" type="button">Save Card</button>
               <button id="useCharacter" class="secondary-button" type="button">Use Card</button>
+              <button id="exportCharacter" class="secondary-button" type="button">Export Character</button>
             </div>
             <p id="characterSaveStatus" class="muted">Local JSON profiles are stored in storage/characters.</p>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <div id="persona-modal" class="modal-overlay hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="persona-modal-title">
+      <div class="modal-window">
+        <header class="modal-header">
+          <div>
+            <h2 id="persona-modal-title">User Personas</h2>
+            <p>Define how models should perceive and address you across chats.</p>
+          </div>
+          <button id="closePersonaRegistry" class="icon-button close-button" type="button" title="Close" aria-label="Close user personas">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
+        </header>
+
+        <div class="modal-grid character-grid">
+          <section class="modal-card">
+            <div class="panel-title">
+              <h2>Saved Personas</h2>
+              <button id="newPersona" class="ghost-button" type="button">New</button>
+            </div>
+            <div id="personaList" class="profile-list">
+              <div class="empty-state">No user personas yet.</div>
+            </div>
+          </section>
+
+          <section class="modal-card">
+            <div class="panel-title">
+              <h2>Persona Editor</h2>
+              <span id="personaEditorMode" class="badge">Draft</span>
+            </div>
+            <div class="avatar-config">
+              <div id="personaEditorAvatar" class="avatar avatar-large">U</div>
+              <label class="field fill">
+                <span>Name</span>
+                <input id="personaEditorName" class="input" value="User" />
+              </label>
+            </div>
+            <label class="field">
+              <span>Avatar URL/File</span>
+              <input id="personaEditorAvatarUrl" class="input" placeholder="/static/img/user.png" />
+            </label>
+            <label class="field">
+              <span>Avatar Image</span>
+              <input id="personaAvatarFile" class="input" type="file" accept="image/png,image/jpeg" />
+            </label>
+            <label class="field">
+              <span>Description/Bio</span>
+              <textarea id="personaEditorDescription" class="input textarea compact-textarea" placeholder="How the AI should perceive you"></textarea>
+            </label>
+            <label class="toggle-row switch-row">
+              <input id="personaDefault" type="checkbox" />
+              <span>Set as Global Default</span>
+            </label>
+            <div class="button-row">
+              <button id="savePersona" class="primary-button" type="button">Save Persona</button>
+              <button id="usePersona" class="secondary-button" type="button">Use Persona</button>
+            </div>
+            <p id="personaSaveStatus" class="muted">Persona profiles are stored in storage/personas.</p>
           </section>
         </div>
       </div>

@@ -32,8 +32,19 @@ start "SweetrollLM Backend" /B python run.py
 echo Waiting for the local server to initialize...
 timeout /t 2 /nobreak >nul
 
-echo Opening SweetrollLM in your default browser...
-start "" "http://127.0.0.1:7865"
+echo Opening SweetrollLM in a standalone app window...
+where msedge >nul 2>nul
+if not errorlevel 1 (
+    start "" msedge --app=http://127.0.0.1:7865
+) else (
+    where chrome >nul 2>nul
+    if not errorlevel 1 (
+        start "" chrome --app=http://127.0.0.1:7865
+    ) else (
+        echo App-mode browser was not found. Falling back to the default browser.
+        start "" "http://127.0.0.1:7865"
+    )
+)
 
 echo.
 echo SweetrollLM is starting. You can close this window after the app opens.

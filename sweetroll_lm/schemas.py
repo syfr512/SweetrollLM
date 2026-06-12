@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Literal
+from typing import Any, Literal
 from pathlib import PurePosixPath
 
 from pydantic import BaseModel, Field, SecretStr, field_validator
@@ -61,14 +61,52 @@ class CloudSettings(BaseModel):
         return value.rstrip("/")
 
 
+class ApiProviderProfile(BaseModel):
+    id: str
+    name: str = Field(min_length=1, max_length=120)
+    base_url: str = Field(min_length=1)
+    api_key: str = ""
+    default_model: str = Field(min_length=1)
+    is_default: bool = False
+    created_at: str
+    updated_at: str
+
+    @field_validator("base_url")
+    @classmethod
+    def trim_provider_base_url(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Base URL is required.")
+        return value.rstrip("/")
+
+
+class ApiProviderSaveRequest(BaseModel):
+    id: str | None = None
+    name: str = Field(min_length=1, max_length=120)
+    base_url: str = Field(min_length=1)
+    api_key: str = ""
+    default_model: str = Field(min_length=1)
+    is_default: bool = False
+
+    @field_validator("base_url")
+    @classmethod
+    def trim_provider_base_url(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Base URL is required.")
+        return value.rstrip("/")
+
+
 class ChatRequest(BaseModel):
     chat_id: str | None = None
     source: InferenceSource
     messages: list[ChatMessage]
     system_prompt: str = ""
     character_id: str | None = None
+    persona_id: str | None = None
     lorebook_id: str | None = None
     lorebook_enabled: bool = False
+    vision_context: str = ""
     local: LocalSettings = Field(default_factory=LocalSettings)
     cloud: CloudSettings | None = None
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
@@ -83,6 +121,50 @@ class ChatRequest(BaseModel):
             )
         messages.extend(self.messages)
         return messages
+
+
+class ChatCompletionResponse(BaseModel):
+    chat_id: str
+    source: str
+    text: str
+
+
+class ImageGenerationRequest(BaseModel):
+    provider: Literal["comfyui", "stable_diffusion", "flux", "dalle3", "custom"] = "comfyui"
+    endpoint: str = ""
+    api_key: SecretStr | None = None
+    model: str = ""
+    prompt: str = Field(min_length=1, max_length=4000)
+    negative_prompt: str = ""
+    aspect_ratio: str = "1:1"
+    steps: int = Field(default=24, ge=1, le=150)
+
+
+class ImageGenerationResponse(BaseModel):
+    status: Literal["completed", "prepared", "error"]
+    message: str
+    markdown: str = ""
+    image_url: str = ""
+    raw: dict[str, Any] = Field(default_factory=dict)
+
+
+class VisionCaptionRequest(BaseModel):
+    provider: Literal["llava", "qwen-vl", "openai", "custom"] = "custom"
+    endpoint: str = ""
+    api_key: SecretStr | None = None
+    filename: str = "attached-image.png"
+    data_url: str = Field(min_length=16)
+    prompt: str = (
+        "Describe this image for an AI roleplay character. Focus on visible subjects, "
+        "mood, setting, composition, and details relevant to conversation."
+    )
+
+
+class VisionCaptionResponse(BaseModel):
+    status: Literal["completed", "prepared", "error"]
+    filename: str
+    caption: str
+    message: str = ""
 
 
 class LocalModelLoadRequest(BaseModel):
@@ -139,11 +221,19 @@ class HealthResponse(BaseModel):
     storage_dir: str
 
 
+class ConsoleLogResponse(BaseModel):
+    lines: list[str] = Field(default_factory=list)
+    text: str = ""
+    truncated: bool = False
+
+
 class CharacterProfile(BaseModel):
     id: str
     name: str = Field(min_length=1, max_length=120)
     description: str = ""
     personality: str = ""
+    scenario: str = ""
+    example_dialogue: str = ""
     first_message: str = ""
     avatar_url: str = ""
     avatar_file: str = ""
@@ -156,9 +246,43 @@ class CharacterSaveRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     description: str = ""
     personality: str = ""
+    scenario: str = ""
+    example_dialogue: str = ""
     first_message: str = ""
     avatar_url: str = ""
     avatar_file: str = ""
+
+
+class AssetSaveRequest(BaseModel):
+    filename: str = Field(min_length=1, max_length=180)
+    data_url: str = Field(min_length=16)
+
+
+class AssetFile(BaseModel):
+    filename: str
+    url: str
+    mime_type: str
+    size_bytes: int
+
+
+class UserPersonaProfile(BaseModel):
+    id: str
+    name: str = Field(min_length=1, max_length=120)
+    description: str = ""
+    avatar_url: str = ""
+    avatar_file: str = ""
+    is_default: bool = False
+    created_at: str
+    updated_at: str
+
+
+class UserPersonaSaveRequest(BaseModel):
+    id: str | None = None
+    name: str = Field(min_length=1, max_length=120)
+    description: str = ""
+    avatar_url: str = ""
+    avatar_file: str = ""
+    is_default: bool = False
 
 
 class LorebookEntry(BaseModel):

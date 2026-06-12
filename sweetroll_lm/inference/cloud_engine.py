@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 
 import httpx
 
+from sweetroll_lm.inference.prompt_templates import stop_tokens_for_template
 from sweetroll_lm.schemas import ChatRequest, CloudProvider
 
 
@@ -41,6 +42,7 @@ class CloudChatEngine:
             "temperature": request.temperature,
             "top_p": request.top_p,
             "max_tokens": request.max_tokens,
+            "stop": stop_tokens_for_template(request.local.template),
             "stream": True,
         }
 

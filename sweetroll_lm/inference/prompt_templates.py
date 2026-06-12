@@ -7,12 +7,22 @@ def render_prompt(
     messages: list[ChatMessage], template: PromptTemplate
 ) -> tuple[str, list[str]]:
     if template == PromptTemplate.chatml:
-        return _render_chatml(messages), ["<|im_end|>"]
+        return _render_chatml(messages), stop_tokens_for_template(template)
     if template == PromptTemplate.llama3:
-        return _render_llama3(messages), ["<|eot_id|>"]
+        return _render_llama3(messages), stop_tokens_for_template(template)
     if template == PromptTemplate.mistral:
-        return _render_mistral(messages), ["</s>"]
-    return _render_plain(messages), ["### User:", "### System:"]
+        return _render_mistral(messages), stop_tokens_for_template(template)
+    return _render_plain(messages), stop_tokens_for_template(template)
+
+
+def stop_tokens_for_template(template: PromptTemplate) -> list[str]:
+    if template == PromptTemplate.chatml:
+        return ["<|im_end|>", "\n<|im_start|>user", "\nUser:", "\n###"]
+    if template == PromptTemplate.llama3:
+        return ["<|eot_id|>", "<|EOT|>", "\nUser:", "\n###"]
+    if template == PromptTemplate.mistral:
+        return ["</s>", "[INST]", "\nUser:", "\n###"]
+    return ["\n### User:", "\nUser:", "\n### System:", "\n###"]
 
 
 def _render_chatml(messages: list[ChatMessage]) -> str:
@@ -72,4 +82,3 @@ def _first_system_message(messages: list[ChatMessage]) -> str:
         if message.role == ChatRole.system:
             return message.content
     return ""
-
