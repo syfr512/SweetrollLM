@@ -180,6 +180,7 @@ class LocalLlamaEngine:
         self._koboldcpp = _KoboldCppProcessManager()
         self._lock = asyncio.Lock()
         self._last_error: tuple[str, str] | None = None
+        self._last_diagnostic: dict[str, str] | None = None
 
     def status(self) -> LocalModelStatus:
         if self._model:
@@ -199,11 +200,15 @@ class LocalLlamaEngine:
 
         if self._last_error:
             code, message = self._last_error
+            diagnostic = self._last_diagnostic or {}
             return LocalModelStatus(
                 loaded=False,
                 status="error",
                 message=message,
                 error_code=code,
+                diagnostic_title=diagnostic.get("title", ""),
+                diagnostic_message=diagnostic.get("message", ""),
+                diagnostic_solution=diagnostic.get("solution", ""),
             )
         return LocalModelStatus(loaded=False, status="idle")
 
@@ -221,6 +226,7 @@ class LocalLlamaEngine:
             async with self._lock:
                 await asyncio.to_thread(self._drop_loaded_model)
                 self._last_error = None
+                self._last_diagnostic = None
                 try:
                     return await self._koboldcpp.load_model(model_path, request)
                 except Exception as exc:
@@ -305,6 +311,7 @@ class LocalLlamaEngine:
                 llm=llm,
             )
             self._last_error = None
+            self._last_diagnostic = None
             return self.status()
 
     async def unload_model(self) -> LocalModelStatus:
@@ -312,6 +319,7 @@ class LocalLlamaEngine:
             await asyncio.to_thread(self._drop_loaded_model)
             await asyncio.to_thread(self._koboldcpp.stop)
             self._last_error = None
+            self._last_diagnostic = None
         return self.status()
 
     async def shutdown(self) -> None:
@@ -348,6 +356,7 @@ class LocalLlamaEngine:
             logger.error("Local engine activation failed: %s", message)
         self._drop_loaded_model()
         self._last_error = (code, message)
+        self._last_diagnostic = _diagnostic_for_error(code)
         return self.status()
 
     async def stream_chat(self, request: ChatRequest) -> AsyncIterator[str]:
@@ -461,16 +470,33 @@ def _classify_native_load_error(exc: Exception) -> tuple[str, str]:
     raw = f"{type(exc).__name__}: {exc}"
     normalized = raw.lower()
     if (
+        "out of memory" in normalized
+        or "not enough memory" in normalized
+        or "cannot allocate memory" in normalized
+        or "allocation failed" in normalized
+        or "bad allocation" in normalized
+        or "memoryerror" in normalized
+        or "cuda out of memory" in normalized
+        or "outofdevicememory" in normalized
+        or "malloc" in normalized
+    ):
+        return (
+            "out_of_memory",
+            "System out of memory. This model file size exceeds your available "
+            "system RAM or VRAM allocation limits.",
+        )
+    if (
         "0xc000001d" in normalized
         or "status_illegal_instruction" in normalized
         or "illegal instruction" in normalized
         or "avx2" in normalized
+        or "no avx2" in normalized
+        or "instruction set" in normalized
     ):
         return (
             "hardware_instruction_mismatch",
-            "Hardware Instruction Mismatch: Your CPU does not support AVX2 "
-            "extensions required by this native llama-cpp-python wheel. "
-            "Falling back to managed KoboldCPP old-PC mode.",
+            "Native high-speed execution failed. Your processor lacks modern "
+            "AVX2 vector extensions.",
         )
     if (
         isinstance(exc, OSError)
@@ -486,3 +512,40 @@ def _classify_native_load_error(exc: Exception) -> tuple[str, str]:
             "machine.",
         )
     return ("model_load_error", f"Model Load Error: {exc}")
+
+
+def _diagnostic_for_error(code: str) -> dict[str, str]:
+    if code in {
+        "hardware_instruction_mismatch",
+        "native_binary_load_error",
+        "koboldcpp_executable_missing",
+    }:
+        return {
+            "title": "Legacy CPU / No AVX2 Detected",
+            "message": (
+                "Native high-speed execution failed. Your processor lacks modern "
+                "AVX2 vector extensions."
+            ),
+            "solution": (
+                "Ensure 'koboldcpp-oldpc.exe' is placed in your root folder; "
+                "SweetrollLM will automatically route your models through our "
+                "headless legacy engine wrapper instead."
+            ),
+        }
+    if code == "out_of_memory":
+        return {
+            "title": "Out of Memory",
+            "message": (
+                "System out of memory. This model file size exceeds your available "
+                "system RAM or VRAM allocation limits."
+            ),
+            "solution": (
+                "Try downloading a lower parameter count variant (e.g., a 3B model) "
+                "or a higher quantization compression level (e.g., Q4_K_M or Q3_K_S)."
+            ),
+        }
+    return {
+        "title": "Model Load Failed",
+        "message": "SweetrollLM caught a local model loading failure.",
+        "solution": "Check Console Logs for details, then try a smaller model or a different quantization.",
+    }

@@ -5,7 +5,7 @@ const DEFAULT_CHARACTER = {
   personality: "",
   scenario: "",
   example_dialogue: "",
-  first_message: "Hello. I am Aria.",
+  first_message: "Welcome to SweetrollLM! Pull up a chair by the hearth and get comfortable. What kind of adventure or code are we cooking up today?",
   avatar_url: "",
   avatar_file: "",
 };
@@ -58,6 +58,9 @@ const state = {
   imageGenerating: false,
   logRefreshTimer: null,
   startupReady: false,
+  setupWizardShown: false,
+  setupStep: 1,
+  lastDiagnosticKey: "",
 };
 
 const el = {};
@@ -69,6 +72,7 @@ document.addEventListener("DOMContentLoaded", () => {
 async function initializeApp() {
   cacheElements();
   bindEvents();
+  applySavedTheme();
   pollStartupHealth();
   setChatTransparency(el.chatTransparency.value);
   setSidebarCollapsed(loadSidebarPreference(), { persist: false });
@@ -86,6 +90,7 @@ async function initializeApp() {
   ]);
   resetChatToFirstMessage();
   installAutoScrollObserver();
+  maybeShowSetupWizard();
 }
 
 function cacheElements() {
@@ -120,6 +125,7 @@ function cacheElements() {
     "baseUrl",
     "cloudModel",
     "apiKey",
+    "appTheme",
     "temperature",
     "topP",
     "maxTokens",
@@ -127,6 +133,7 @@ function cacheElements() {
     "characterBackgrounds",
     "chatTransparency",
     "chatTransparencyValue",
+    "resetSetupWizard",
     "personaSelect",
     "openPersonaRegistry",
     "characterName",
@@ -147,6 +154,31 @@ function cacheElements() {
     "refreshConsoleLogs",
     "consoleLogOutput",
     "consoleLogStatus",
+    "setupStepBadge",
+    "setupProviderSelect",
+    "setupProviderType",
+    "setupCloudModel",
+    "setupApiKey",
+    "setupSaveApi",
+    "setupSkipApi",
+    "setupScanModels",
+    "setupOpenMarketplace",
+    "setupSkipModels",
+    "setupModelStatus",
+    "setupPersonaName",
+    "setupPersonaBio",
+    "setupCreatePersona",
+    "setupImportCharacter",
+    "setupIdentityStatus",
+    "setupBack",
+    "setupNext",
+    "setupFinish",
+    "modelDiagnosticSubtitle",
+    "modelDiagnosticMessage",
+    "modelDiagnosticSolution",
+    "closeModelDiagnostic",
+    "diagnosticOpenMarketplace",
+    "diagnosticDismiss",
     "toggleExtensions",
     "extensionsDrawer",
     "extensionStatus",
@@ -235,6 +267,8 @@ function cacheElements() {
   });
   el.modelMarketModal = document.getElementById("model-market-modal");
   el.consoleLogsModal = document.getElementById("console-logs-modal");
+  el.setupWizardModal = document.getElementById("setup-wizard-modal");
+  el.modelDiagnosticModal = document.getElementById("model-diagnostic-modal");
   el.characterModal = document.getElementById("character-modal");
   el.personaModal = document.getElementById("persona-modal");
   el.lorebookModal = document.getElementById("lorebook-modal");
@@ -259,6 +293,28 @@ function bindEvents() {
   el.openConsoleLogs.addEventListener("click", openConsoleLogs);
   el.closeConsoleLogs.addEventListener("click", () => closeModal(el.consoleLogsModal));
   el.refreshConsoleLogs.addEventListener("click", fetchConsoleLogs);
+  el.closeModelDiagnostic.addEventListener("click", () => closeModal(el.modelDiagnosticModal));
+  el.diagnosticDismiss.addEventListener("click", () => closeModal(el.modelDiagnosticModal));
+  el.diagnosticOpenMarketplace.addEventListener("click", () => {
+    closeModal(el.modelDiagnosticModal);
+    openModelMarket();
+  });
+  el.setupSaveApi.addEventListener("click", setupSaveApi);
+  el.setupSkipApi.addEventListener("click", () => showSetupStep(2));
+  el.setupScanModels.addEventListener("click", setupScanModels);
+  el.setupOpenMarketplace.addEventListener("click", () => {
+    openModelMarket();
+    setupModelStatus("Marketplace opened. Download or select a GGUF, then return here.");
+  });
+  el.setupSkipModels.addEventListener("click", () => showSetupStep(3));
+  el.setupCreatePersona.addEventListener("click", setupCreatePersona);
+  el.setupImportCharacter.addEventListener("click", () => {
+    openCharacterLibrary();
+    el.importCharacterFile.click();
+  });
+  el.setupBack.addEventListener("click", () => showSetupStep(state.setupStep - 1));
+  el.setupNext.addEventListener("click", () => showSetupStep(state.setupStep + 1));
+  el.setupFinish.addEventListener("click", finishSetupWizard);
   el.openCharacterLibrary.addEventListener("click", openCharacterLibrary);
   el.editCurrentCharacter.addEventListener("click", openCharacterLibrary);
   el.closeCharacterLibrary.addEventListener("click", () => closeModal(el.characterModal));
@@ -267,7 +323,7 @@ function bindEvents() {
   el.openLorebookEditor.addEventListener("click", openLorebookEditor);
   el.closeLorebookEditor.addEventListener("click", () => closeModal(el.lorebookModal));
 
-  [el.modelMarketModal, el.consoleLogsModal, el.characterModal, el.personaModal, el.lorebookModal].forEach((modal) => {
+  [el.modelMarketModal, el.consoleLogsModal, el.modelDiagnosticModal, el.characterModal, el.personaModal, el.lorebookModal].forEach((modal) => {
     modal.addEventListener("click", (event) => {
       if (event.target === modal) {
         closeModal(modal);
@@ -317,6 +373,12 @@ function bindEvents() {
   el.characterName.addEventListener("input", updateCharacterPreview);
   el.characterAvatar.addEventListener("input", updateCharacterPreview);
   el.characterBackgrounds.addEventListener("change", updateChatBackground);
+  el.appTheme.addEventListener("change", () => setAppTheme(el.appTheme.value));
+  el.resetSetupWizard.addEventListener("click", () => {
+    window.localStorage.removeItem("sweetroll_setup_complete");
+    state.setupWizardShown = false;
+    showSetupWizard();
+  });
   el.chatTransparency.addEventListener("input", () => {
     setChatTransparency(el.chatTransparency.value);
   });
@@ -404,6 +466,33 @@ function setChatTransparency(value) {
   el.chatTransparencyValue.textContent = `${Math.round(numeric * 100)}%`;
 }
 
+function applySavedTheme() {
+  let theme = "aurora-dark";
+  try {
+    theme = window.localStorage.getItem("sweetroll_lm_theme") || theme;
+  } catch {
+    theme = "aurora-dark";
+  }
+  setAppTheme(theme, { persist: false });
+}
+
+function setAppTheme(theme, options = {}) {
+  const normalized = theme === "sweetroll-light" ? "sweetroll-light" : "aurora-dark";
+  document.documentElement.dataset.theme = normalized;
+  el.appTheme.value = normalized;
+  const metaTheme = document.querySelector('meta[name="theme-color"]');
+  if (metaTheme) {
+    metaTheme.setAttribute("content", normalized === "sweetroll-light" ? "#FFFDF9" : "#05070b");
+  }
+  if (options.persist !== false) {
+    try {
+      window.localStorage.setItem("sweetroll_lm_theme", normalized);
+    } catch {
+      // Theme is already applied; storage is only for the next launch.
+    }
+  }
+}
+
 function toggleExtensionsDrawer() {
   state.extensionsOpen = !state.extensionsOpen;
   el.extensionsDrawer.classList.toggle("hidden", !state.extensionsOpen);
@@ -447,7 +536,7 @@ function closeModal(modal) {
 }
 
 function closeAllModals() {
-  [el.modelMarketModal, el.consoleLogsModal, el.characterModal, el.personaModal, el.lorebookModal].forEach(closeModal);
+  [el.modelMarketModal, el.consoleLogsModal, el.modelDiagnosticModal, el.characterModal, el.personaModal, el.lorebookModal].forEach(closeModal);
 }
 
 async function pollStartupHealth() {
@@ -521,6 +610,150 @@ async function fetchConsoleLogs() {
   }
 }
 
+function setupComplete() {
+  try {
+    return window.localStorage.getItem("sweetroll_setup_complete") === "true";
+  } catch {
+    return true;
+  }
+}
+
+function maybeShowSetupWizard() {
+  if (!setupComplete()) {
+    showSetupWizard();
+  }
+}
+
+function showSetupWizard() {
+  state.setupWizardShown = true;
+  renderSetupProviderOptions();
+  showSetupStep(1);
+  openModal(el.setupWizardModal, el.setupProviderSelect);
+}
+
+function renderSetupProviderOptions() {
+  el.setupProviderSelect.innerHTML = '<option value="">No saved provider</option>';
+  state.apiProviders.forEach((provider) => {
+    const option = document.createElement("option");
+    option.value = provider.id;
+    option.textContent = provider.name;
+    el.setupProviderSelect.appendChild(option);
+  });
+}
+
+function showSetupStep(step) {
+  state.setupStep = Math.max(1, Math.min(3, Number(step) || 1));
+  document.querySelectorAll(".setup-step").forEach((panel) => {
+    panel.classList.toggle("active", Number(panel.dataset.setupStep) === state.setupStep);
+  });
+  document.querySelectorAll(".setup-dot").forEach((dot, index) => {
+    dot.classList.toggle("active", index < state.setupStep);
+  });
+  el.setupStepBadge.textContent = `Step ${state.setupStep} of 3`;
+  el.setupBack.disabled = state.setupStep === 1;
+  el.setupNext.classList.toggle("hidden", state.setupStep === 3);
+  el.setupFinish.classList.toggle("hidden", state.setupStep !== 3);
+}
+
+async function setupSaveApi() {
+  const selectedProvider = el.setupProviderSelect.value;
+  if (selectedProvider) {
+    state.activeApiProviderId = selectedProvider;
+    el.apiProviderSelect.value = selectedProvider;
+    applyActiveApiProviderToFields();
+    showSetupStep(2);
+    return;
+  }
+
+  const apiKey = el.setupApiKey.value.trim();
+  if (!apiKey) {
+    showSetupStep(2);
+    return;
+  }
+
+  const providerType = el.setupProviderType.value;
+  const baseUrl =
+    providerType === "openai"
+      ? "https://api.openai.com/v1"
+      : providerType === "openrouter"
+        ? "https://openrouter.ai/api/v1"
+        : el.baseUrl.value;
+  try {
+    const response = await fetch("/api/api-providers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "First Cloud Profile",
+        base_url: baseUrl,
+        api_key: apiKey,
+        default_model: el.setupCloudModel.value.trim() || "gpt-4o-mini",
+        is_default: true,
+      }),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.detail || "Could not save API profile");
+    }
+    await loadApiProviders();
+    state.activeApiProviderId = payload.id;
+    showSetupStep(2);
+  } catch (error) {
+    setupModelStatus(`API profile skipped: ${error.message}`);
+    showSetupStep(2);
+  }
+}
+
+async function setupScanModels() {
+  setupModelStatus("Scanning local GGUF storage...");
+  await refreshModels();
+  const count = state.localModels.length;
+  setupModelStatus(
+    count ? `Found ${count} local GGUF model${count === 1 ? "" : "s"}.` : "No GGUF models found yet."
+  );
+}
+
+async function setupCreatePersona() {
+  const name = el.setupPersonaName.value.trim();
+  const description = el.setupPersonaBio.value.trim();
+  if (!name && !description) {
+    el.setupIdentityStatus.textContent = "Persona skipped. You can add one later.";
+    return;
+  }
+  try {
+    const response = await fetch("/api/personas", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: name || "Player",
+        description,
+        is_default: true,
+      }),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.detail || "Could not save persona");
+    }
+    await loadPersonas();
+    applyPersona(payload);
+    el.setupIdentityStatus.textContent = "Persona saved and selected.";
+  } catch (error) {
+    el.setupIdentityStatus.textContent = error.message;
+  }
+}
+
+function setupModelStatus(message) {
+  el.setupModelStatus.textContent = message;
+}
+
+function finishSetupWizard() {
+  try {
+    window.localStorage.setItem("sweetroll_setup_complete", "true");
+  } catch {
+    // Failing localStorage should not block use of the app.
+  }
+  closeModal(el.setupWizardModal);
+}
+
 function updateInferenceVisibility() {
   const localMode = el.inferenceSource.value === "local";
   el.cloudPanel.classList.toggle("hidden", localMode);
@@ -566,6 +799,7 @@ async function loadApiProviders() {
     state.editingApiProviderId = active?.id || null;
     renderApiProviderSelect();
     renderApiProviderList();
+    renderSetupProviderOptions();
     if (active) {
       setApiProviderEditor(active);
       applyApiProviderToFields(active);
@@ -574,6 +808,7 @@ async function loadApiProviders() {
     state.apiProviders = [];
     renderApiProviderSelect();
     renderApiProviderList();
+    renderSetupProviderOptions();
     setApiProviderStatus(error.message || "Could not load API providers.");
   }
 }
@@ -1093,11 +1328,21 @@ async function loadModel() {
     });
     const data = await response.json();
     if (!response.ok) {
+      if (typeof data.detail === "object" && data.detail) {
+        renderModelStatus(data.detail);
+        return;
+      }
       throw new Error(data.detail || "Model load failed");
     }
     renderModelStatus(data);
   } catch (error) {
     setModelStatus(error.message, false);
+    showModelDiagnostic({
+      error_code: "model_load_error",
+      diagnostic_title: "Model Load Failed",
+      diagnostic_message: error.message,
+      diagnostic_solution: "Check Console Logs for details, then try a smaller model or a different quantization.",
+    });
   } finally {
     setBusy(false);
   }
@@ -1190,7 +1435,7 @@ function setCharacterEditor(character) {
   el.characterEditorPersonality.value = profile.personality || "";
   el.characterEditorScenario.value = profile.scenario || "";
   el.characterEditorExamples.value = profile.example_dialogue || "";
-  el.characterEditorFirstMessage.value = profile.first_message || `Hello. I am ${profile.name}.`;
+  el.characterEditorFirstMessage.value = profile.first_message || DEFAULT_CHARACTER.first_message;
   el.characterAvatarFile.value = "";
   updateCharacterEditorAvatar();
 }
@@ -1262,8 +1507,7 @@ function normalizeCharacter(character) {
     personality: character?.personality || "",
     scenario: character?.scenario || "",
     example_dialogue: character?.example_dialogue || "",
-    first_message:
-      character?.first_message || `Hello. I am ${character?.name || DEFAULT_CHARACTER.name}.`,
+    first_message: character?.first_message || DEFAULT_CHARACTER.first_message,
     avatar_url: character?.avatar_url || "",
     avatar_file: character?.avatar_file || "",
   };
@@ -2690,7 +2934,7 @@ function renderAvatar(target, avatarUrl, name) {
 }
 
 function firstMessage() {
-  return state.activeCharacter?.first_message || `Hello. I am ${characterName()}.`;
+  return state.activeCharacter?.first_message || DEFAULT_CHARACTER.first_message;
 }
 
 function characterName() {
@@ -2732,10 +2976,31 @@ function setModelStatus(message, loaded) {
 function renderModelStatus(status) {
   if (!status?.loaded) {
     setModelStatus(status?.message || "No model loaded", false);
+    if (status?.status === "error" || status?.error_code) {
+      showModelDiagnostic(status);
+    }
     return;
   }
   const filename = status.model_path.split(/[\\/]/).pop();
   setModelStatus(`${filename} loaded (${status.template})`, true);
+}
+
+function showModelDiagnostic(status) {
+  const title = status.diagnostic_title || "Model Load Diagnostic";
+  const message =
+    status.diagnostic_message || status.message || "SweetrollLM caught a local model loading failure.";
+  const solution =
+    status.diagnostic_solution ||
+    "Check Console Logs for details, then try a smaller model or a different quantization.";
+  const key = `${status.error_code || title}:${message}:${solution}`;
+  if (state.lastDiagnosticKey === key) {
+    return;
+  }
+  state.lastDiagnosticKey = key;
+  el.modelDiagnosticSubtitle.textContent = title;
+  el.modelDiagnosticMessage.textContent = message;
+  el.modelDiagnosticSolution.textContent = solution;
+  openModal(el.modelDiagnosticModal, el.closeModelDiagnostic);
 }
 
 function autosizeComposer() {

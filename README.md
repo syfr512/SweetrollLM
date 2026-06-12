@@ -48,6 +48,7 @@ start.bat
 | APIs | Provider registry for OpenRouter, Ollama, Groq, KoboldCPP, OpenAI-compatible endpoints, and custom base URLs |
 | Creative Extensions | Image generation connectors, VLM captioning hooks, drag-and-drop image context, chat transparency controls |
 | Production Shell | App-mode Windows launcher, Skyrim-inspired startup overlay, SEO metadata, and live backend console log viewer |
+| First-Run Polish | Tavo-inspired setup wizard, branded taskbar icon, Aurora Dark and Sweetroll Light themes, hardware diagnostics |
 
 ## Creative Extensions
 

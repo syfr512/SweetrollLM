@@ -13,7 +13,11 @@
     <meta property="og:description" content="A polished local AI client blending SillyTavern character depth with LM Studio-style GGUF model management and adaptive koboldcpp fallback routing." />
     <meta property="og:url" content="https://github.com/syfr512/Local-Tavern" />
     <meta property="og:site_name" content="SweetrollLM" />
+    <meta property="og:image" content="/static/assets/icon.png" />
     <title>SweetrollLM</title>
+    <link rel="icon" type="image/png" href="/static/assets/icon.png" />
+    <link rel="apple-touch-icon" href="/static/assets/icon.png" />
+    <meta name="msapplication-TileImage" content="/static/assets/icon.png" />
     <link rel="stylesheet" href="/static/css/tailwind.css" />
     <script defer src="/static/js/markdown.js"></script>
     <script defer src="/static/js/app.js"></script>
@@ -130,6 +134,13 @@
           <div class="panel-title">
             <h2>Generation</h2>
           </div>
+          <label class="field">
+            <span>App Theme</span>
+            <select id="appTheme" class="input">
+              <option value="aurora-dark">Aurora Dark</option>
+              <option value="sweetroll-light">Sweetroll Light</option>
+            </select>
+          </label>
           <div class="two-col">
             <label class="field">
               <span>Temperature</span>
@@ -156,6 +167,7 @@
             <span>Chat Transparency <strong id="chatTransparencyValue">82%</strong></span>
             <input id="chatTransparency" class="range-input" type="range" min="0.1" max="1" step="0.05" value="0.82" />
           </label>
+          <button id="resetSetupWizard" class="secondary-button" type="button">Reset Setup Wizard</button>
         </section>
 
         <section class="panel">
@@ -364,6 +376,123 @@
       </div>
     </div>
 
+    <div id="setup-wizard-modal" class="modal-overlay hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="setup-wizard-title">
+      <div class="modal-window setup-window">
+        <header class="modal-header">
+          <div>
+            <h2 id="setup-wizard-title">Welcome to SweetrollLM</h2>
+            <p>A fast first-run pass to get your tavern, models, and identity ready.</p>
+          </div>
+          <span id="setupStepBadge" class="badge badge-local">Step 1 of 3</span>
+        </header>
+        <section class="setup-body">
+          <div class="setup-progress" aria-hidden="true">
+            <span class="setup-dot active"></span>
+            <span class="setup-dot"></span>
+            <span class="setup-dot"></span>
+          </div>
+
+          <article class="setup-step active" data-setup-step="1">
+            <h3>Connect or Stay Local</h3>
+            <p>Use a saved cloud profile, add an OpenRouter/OpenAI-compatible key, or skip for a fully offline local setup.</p>
+            <label class="field">
+              <span>Saved Cloud Profile</span>
+              <select id="setupProviderSelect" class="input">
+                <option value="">No saved provider</option>
+              </select>
+            </label>
+            <div class="two-col">
+              <label class="field">
+                <span>Provider</span>
+                <select id="setupProviderType" class="input">
+                  <option value="openrouter">OpenRouter</option>
+                  <option value="openai">OpenAI</option>
+                  <option value="custom">Custom</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Default Model</span>
+                <input id="setupCloudModel" class="input" value="openai/gpt-4o-mini" />
+              </label>
+            </div>
+            <label class="field">
+              <span>API Key</span>
+              <input id="setupApiKey" class="input" type="password" autocomplete="off" placeholder="Optional" />
+            </label>
+            <div class="button-row">
+              <button id="setupSaveApi" class="primary-button" type="button">Save & Continue</button>
+              <button id="setupSkipApi" class="secondary-button" type="button">Skip API</button>
+            </div>
+          </article>
+
+          <article class="setup-step" data-setup-step="2">
+            <h3>Model Provisioning</h3>
+            <p>Scan your local GGUF storage, open the Marketplace, or continue without loading a model yet.</p>
+            <div class="setup-action-grid">
+              <button id="setupScanModels" class="secondary-button" type="button">Import / Scan Existing GGUF</button>
+              <button id="setupOpenMarketplace" class="secondary-button" type="button">Open Marketplace</button>
+              <button id="setupSkipModels" class="secondary-button" type="button">Skip for Now</button>
+            </div>
+            <p id="setupModelStatus" class="muted">Place GGUF files in storage/models/ or use the Marketplace downloader.</p>
+          </article>
+
+          <article class="setup-step" data-setup-step="3">
+            <h3>Identity Setup</h3>
+            <p>Create a first User Persona or import a character card to make responses feel personal immediately.</p>
+            <div class="two-col">
+              <label class="field">
+                <span>Your Name</span>
+                <input id="setupPersonaName" class="input" placeholder="Player" />
+              </label>
+              <label class="field">
+                <span>Bio / How AI Sees You</span>
+                <input id="setupPersonaBio" class="input" placeholder="A curious builder exploring local AI." />
+              </label>
+            </div>
+            <div class="button-row">
+              <button id="setupCreatePersona" class="secondary-button" type="button">Create Persona</button>
+              <button id="setupImportCharacter" class="secondary-button" type="button">Import Character Card</button>
+            </div>
+            <p id="setupIdentityStatus" class="muted">You can edit personas and characters later from settings.</p>
+          </article>
+
+          <footer class="setup-footer">
+            <button id="setupBack" class="secondary-button" type="button">Back</button>
+            <button id="setupNext" class="secondary-button" type="button">Next</button>
+            <button id="setupFinish" class="primary-button" type="button">Finish Setup</button>
+          </footer>
+        </section>
+      </div>
+    </div>
+
+    <div id="model-diagnostic-modal" class="modal-overlay hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="model-diagnostic-title">
+      <div class="modal-window diagnostic-window">
+        <header class="modal-header">
+          <div>
+            <h2 id="model-diagnostic-title">Model Load Diagnostic</h2>
+            <p id="modelDiagnosticSubtitle">SweetrollLM caught the failure before it could crash the app.</p>
+          </div>
+          <button id="closeModelDiagnostic" class="icon-button close-button" type="button" title="Close" aria-label="Close diagnostic">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
+        </header>
+        <section class="diagnostic-body">
+          <p id="modelDiagnosticMessage"></p>
+          <div class="diagnostic-solution">
+            <strong>Solution</strong>
+            <p id="modelDiagnosticSolution"></p>
+          </div>
+          <div class="button-row">
+            <button id="diagnosticOpenMarketplace" class="primary-button" type="button">Open Marketplace</button>
+            <button id="diagnosticDismiss" class="secondary-button" type="button">Dismiss</button>
+          </div>
+        </section>
+      </div>
+    </div>
+
     <div id="model-market-modal" class="modal-overlay hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="model-market-title">
       <div class="modal-window">
         <header class="modal-header">
@@ -457,6 +586,87 @@
             <div class="panel-title">
               <h2>The Sweetroll Cookbook</h2>
               <span class="badge">Roleplay Picks</span>
+            </div>
+            <div class="cookbook-accordion">
+              <details class="cookbook-tier" open>
+                <summary>
+                  <span class="tier-size">1</span>
+                  <span>
+                    <strong>Zero VRAM / CPU-Only</strong>
+                    <em>Requires 4GB-8GB RAM</em>
+                  </span>
+                </summary>
+                <p>Optimized for older processors without dedicated GPUs-runs flawlessly on legacy setups using our headless fallback engine.</p>
+                <div class="cookbook-models">
+                  <button class="cookbook-search" type="button" data-repo="bartowski/Llama-3.2-3B-Instruct-GGUF" title="Search in Marketplace">
+                    <span>Llama-3.2-3B-Instruct</span>
+                    <span aria-hidden="true">Search</span>
+                  </button>
+                  <button class="cookbook-search" type="button" data-repo="bartowski/google_gemma-3-4b-it-GGUF" title="Search in Marketplace">
+                    <span>Gemma-3-4B-IT</span>
+                    <span aria-hidden="true">Search</span>
+                  </button>
+                </div>
+              </details>
+
+              <details class="cookbook-tier">
+                <summary>
+                  <span class="tier-size">2</span>
+                  <span>
+                    <strong>Entry-Level GPU</strong>
+                    <em>Requires 4GB-6GB VRAM</em>
+                  </span>
+                </summary>
+                <p>Small enough for compact GPUs while still giving strong instruction following and responsive chat pacing.</p>
+                <div class="cookbook-models">
+                  <button class="cookbook-search" type="button" data-repo="bartowski/Meta-Llama-3-8B-Instruct-GGUF" title="Search in Marketplace">
+                    <span>Llama-3-8B-Instruct</span>
+                    <span aria-hidden="true">Search</span>
+                  </button>
+                  <button class="cookbook-search" type="button" data-repo="bartowski/Mistral-7B-Instruct-v0.3-GGUF" title="Search in Marketplace">
+                    <span>Mistral-7B-v0.3</span>
+                    <span aria-hidden="true">Search</span>
+                  </button>
+                </div>
+              </details>
+
+              <details class="cookbook-tier">
+                <summary>
+                  <span class="tier-size">3</span>
+                  <span>
+                    <strong>Mid-Spec Roleplay</strong>
+                    <em>Requires 8GB-12GB VRAM</em>
+                  </span>
+                </summary>
+                <p>Designed for richer prose, steadier character voice, and longer roleplay scene continuity.</p>
+                <div class="cookbook-models">
+                  <button class="cookbook-search" type="button" data-repo="bartowski/google_gemma-3-12b-it-GGUF" title="Search in Marketplace">
+                    <span>Gemma-4-12B</span>
+                    <span aria-hidden="true">Search</span>
+                  </button>
+                  <button class="cookbook-search" type="button" data-repo="bartowski/Rocinante-12B-v1.1-GGUF" title="Search in Marketplace">
+                    <span>Rocinante-12B</span>
+                    <span aria-hidden="true">Search</span>
+                  </button>
+                </div>
+              </details>
+
+              <details class="cookbook-tier">
+                <summary>
+                  <span class="tier-size">4</span>
+                  <span>
+                    <strong>Enthusiast Hardware</strong>
+                    <em>Requires 16GB+ VRAM / 32GB RAM</em>
+                  </span>
+                </summary>
+                <p>For long-context state tracking, multi-character scenes, and high-retention narrative logic.</p>
+                <div class="cookbook-models">
+                  <button class="cookbook-search" type="button" data-repo="bartowski/Qwen2.5-32B-Instruct-GGUF" title="Search in Marketplace">
+                    <span>Qwen-3.5-27B-Instruct</span>
+                    <span aria-hidden="true">Search</span>
+                  </button>
+                </div>
+              </details>
             </div>
             <div class="cookbook-grid">
               <article class="cookbook-tier">
@@ -595,7 +805,7 @@
             </label>
             <label class="field">
               <span>First Message</span>
-              <textarea id="characterEditorFirstMessage" class="input textarea compact-textarea">Hello. I am Aria.</textarea>
+              <textarea id="characterEditorFirstMessage" class="input textarea compact-textarea">Welcome to SweetrollLM! Pull up a chair by the hearth and get comfortable. What kind of adventure or code are we cooking up today?</textarea>
             </label>
             <div class="button-row">
               <button id="saveCharacter" class="primary-button" type="button">Save Card</button>

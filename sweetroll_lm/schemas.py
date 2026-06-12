@@ -191,6 +191,9 @@ class LocalModelStatus(BaseModel):
     n_gpu_layers: int | None = None
     message: str = ""
     error_code: str | None = None
+    diagnostic_title: str = ""
+    diagnostic_message: str = ""
+    diagnostic_solution: str = ""
 
 
 class ExternalApiFallbackConfig(BaseModel):
