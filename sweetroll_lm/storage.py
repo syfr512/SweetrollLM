@@ -5,11 +5,13 @@ import re
 import uuid
 import base64
 import binascii
+import shutil
 from pathlib import Path
 from typing import Any
 
 from .config import settings
 from .schemas import (
+    AppAppearanceSettings,
     ApiProviderProfile,
     ApiProviderSaveRequest,
     AssetFile,
@@ -44,7 +46,11 @@ STORAGE_FOLDERS = (
 ALLOWED_ASSET_MIME_TYPES = {
     "image/png": ".png",
     "image/jpeg": ".jpg",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
 }
+
+ALLOWED_BACKGROUND_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
 
 
 def ensure_storage() -> None:
@@ -56,16 +62,63 @@ def scan_gguf_models() -> list[LocalModelFile]:
     ensure_storage()
     models: list[LocalModelFile] = []
     for path in sorted(settings.models_dir.rglob("*.gguf")):
-        stat = path.stat()
-        models.append(
-            LocalModelFile(
-                name=path.name,
-                path=str(path),
-                relative_path=str(path.relative_to(settings.models_dir)),
-                size_bytes=stat.st_size,
-            )
-        )
+        models.append(_model_file_from_path(path))
     return models
+
+
+def import_local_gguf_model() -> tuple[LocalModelFile | None, list[LocalModelFile]]:
+    ensure_storage()
+    selected = _select_gguf_file()
+    if selected is None:
+        return None, scan_gguf_models()
+
+    source = selected.resolve()
+    if source.suffix.lower() != ".gguf" or not source.is_file():
+        raise ValueError("Select a valid .gguf model file.")
+
+    target = _unique_model_path(source.name)
+    if source != target.resolve():
+        shutil.copy2(source, target)
+
+    imported = _model_file_from_path(target)
+    return imported, scan_gguf_models()
+
+
+def get_app_settings() -> AppAppearanceSettings:
+    ensure_storage()
+    app_settings = _read_json_file(settings.app_settings_path, AppAppearanceSettings)
+    if app_settings is None:
+        app_settings = AppAppearanceSettings()
+        _write_json_file(settings.app_settings_path, app_settings.model_dump())
+    return app_settings
+
+
+def save_app_settings(request: AppAppearanceSettings) -> AppAppearanceSettings:
+    ensure_storage()
+    global_background_path = request.global_background_path.strip()
+    if global_background_path and not _is_safe_background_reference(global_background_path):
+        path = _resolve_background_image_path(global_background_path)
+        global_background_path = str(path)
+    app_settings = AppAppearanceSettings(
+        global_background_path=global_background_path,
+        chat_bubble_opacity=request.chat_bubble_opacity,
+        background_image_opacity=request.background_image_opacity,
+        updated_at=utc_now_iso(),
+    )
+    _write_json_file(settings.app_settings_path, app_settings.model_dump())
+    return app_settings
+
+
+def clear_global_background_image() -> AppAppearanceSettings:
+    current = get_app_settings()
+    return save_app_settings(current.model_copy(update={"global_background_path": ""}))
+
+
+def get_global_background_path() -> Path:
+    app_settings = get_app_settings()
+    if not app_settings.global_background_path:
+        raise FileNotFoundError("No global chat background has been selected.")
+    return _resolve_background_image_path(app_settings.global_background_path)
 
 
 def list_characters() -> list[CharacterProfile]:
@@ -168,24 +221,50 @@ def get_default_api_provider() -> ApiProviderProfile | None:
 def save_api_provider(request: ApiProviderSaveRequest) -> ApiProviderProfile:
     ensure_storage()
     providers = _read_api_provider_registry()
-    provider_id = _safe_id(request.id) if request.id else _new_id(request.name)
+    requested_name = request.name.strip() or "API Provider"
+    provider_id = _safe_id(request.id) if request.id else ""
     created_at = utc_now_iso()
     existing_index: int | None = None
+    same_name_index: int | None = None
 
     for index, provider in enumerate(providers):
-        if provider.id == provider_id:
+        if provider.name.strip().lower() == requested_name.lower():
+            same_name_index = index
+        if provider_id and provider.id == provider_id:
             existing_index = index
             created_at = provider.created_at
-            break
+    if existing_index is not None:
+        existing = providers[existing_index]
+        if existing.name.strip().lower() != requested_name.lower():
+            # A changed name represents a new registry slot, preventing accidental
+            # overwrites when users draft a second provider from the active editor.
+            existing_index = same_name_index
+            provider_id = (
+                providers[same_name_index].id
+                if same_name_index is not None
+                else _new_id(requested_name)
+            )
+            created_at = (
+                providers[same_name_index].created_at
+                if same_name_index is not None
+                else utc_now_iso()
+            )
+    elif same_name_index is not None:
+        provider_id = providers[same_name_index].id
+        existing_index = same_name_index
+        created_at = providers[same_name_index].created_at
+    else:
+        provider_id = _new_id(requested_name)
 
     is_default = request.is_default or not providers
     provider = ApiProviderProfile(
         id=provider_id,
-        name=request.name.strip(),
+        name=requested_name,
         base_url=request.base_url.strip().rstrip("/"),
         api_key=request.api_key.strip(),
         default_model=request.default_model.strip(),
         is_default=is_default,
+        is_fallback=request.is_fallback,
         created_at=created_at,
         updated_at=utc_now_iso(),
     )
@@ -196,10 +275,21 @@ def save_api_provider(request: ApiProviderSaveRequest) -> ApiProviderProfile:
             for item in providers
             if item.id != provider_id
         ]
+    elif request.is_fallback:
+        providers = [
+            item.model_copy(update={"is_fallback": False})
+            for item in providers
+            if item.id != provider_id
+        ]
     elif existing_index is not None:
         providers.pop(existing_index)
 
     providers.append(provider)
+    if provider.is_fallback:
+        providers = [
+            item.model_copy(update={"is_fallback": item.id == provider_id})
+            for item in providers
+        ]
     providers.sort(key=lambda item: item.name.lower())
     if providers and not any(item.is_default for item in providers):
         providers[0] = providers[0].model_copy(update={"is_default": True})
@@ -247,6 +337,9 @@ def save_character(request: CharacterSaveRequest) -> CharacterProfile:
         first_message=request.first_message.strip(),
         avatar_url=request.avatar_url.strip(),
         avatar_file=request.avatar_file.strip(),
+        chat_background_url=request.chat_background_url.strip(),
+        chat_background_file=request.chat_background_file.strip(),
+        chat_backdrop_enabled=request.chat_backdrop_enabled,
         created_at=created_at,
         updated_at=utc_now_iso(),
     )
@@ -284,6 +377,31 @@ def character_request_from_portable_payload(
     )
     avatar_url = _first_text(data, "avatar_url", "avatarUrl", "avatar")
     avatar_file = _first_text(data, "avatar_file", "avatarFile")
+    chat_background_url = _first_text(
+        data,
+        "chat_background_url",
+        "chatBackgroundUrl",
+        "chat_backdrop_url",
+        "chatBackdropUrl",
+        "background_url",
+        "chat_background",
+        "background",
+    )
+    chat_background_file = _first_text(
+        data,
+        "chat_background_file",
+        "chatBackgroundFile",
+        "chat_backdrop_file",
+        "chatBackdropFile",
+        "background_file",
+    )
+    chat_backdrop_enabled = _first_bool(
+        data,
+        "chat_backdrop_enabled",
+        "chatBackdropEnabled",
+        "enable_chat_backdrop",
+        default=True,
+    )
 
     return CharacterSaveRequest(
         name=name,
@@ -294,6 +412,9 @@ def character_request_from_portable_payload(
         first_message=first_message,
         avatar_url=avatar_url,
         avatar_file=avatar_file,
+        chat_background_url=chat_background_url,
+        chat_background_file=chat_background_file,
+        chat_backdrop_enabled=chat_backdrop_enabled,
     )
 
 
@@ -311,6 +432,8 @@ def export_character_payload(character_id: str) -> dict[str, Any]:
             "first_mes": character.first_message,
             "mes_example": character.example_dialogue,
             "avatar": avatar,
+            "chat_background": character.chat_background_file or character.chat_background_url,
+            "chat_backdrop_enabled": character.chat_backdrop_enabled,
             "creator_notes": "Exported from SweetrollLM.",
             "system_prompt": "",
             "post_history_instructions": "",
@@ -325,6 +448,9 @@ def export_character_payload(character_id: str) -> dict[str, Any]:
                     "updated_at": character.updated_at,
                     "avatar_url": character.avatar_url,
                     "avatar_file": character.avatar_file,
+                    "chat_background_url": character.chat_background_url,
+                    "chat_background_file": character.chat_background_file,
+                    "chat_backdrop_enabled": character.chat_backdrop_enabled,
                 }
             },
         },
@@ -404,17 +530,22 @@ def save_asset(request: AssetSaveRequest) -> AssetFile:
     if not encoded or not header.startswith("data:"):
         raise ValueError("Asset data must be a browser data URL.")
     mime_type = header[5:].split(";", 1)[0].lower()
-    extension = ALLOWED_ASSET_MIME_TYPES.get(mime_type)
-    if extension is None:
-        raise ValueError("Only PNG and JPG images can be stored as local assets.")
     try:
         content = base64.b64decode(encoded, validate=True)
     except (binascii.Error, ValueError) as exc:
         raise ValueError("Asset image data could not be decoded.") from exc
+    return save_asset_bytes(request.filename, content, mime_type)
+
+
+def save_asset_bytes(filename: str, content: bytes, mime_type: str) -> AssetFile:
+    ensure_storage()
+    mime_type = mime_type.lower().strip()
+    extension = ALLOWED_ASSET_MIME_TYPES.get(mime_type)
+    if extension is None:
+        raise ValueError("Only PNG, JPG, WebP, and GIF images can be stored as local assets.")
     if not content:
         raise ValueError("Asset image data is empty.")
-
-    stem = re.sub(r"[^a-zA-Z0-9_-]+", "-", Path(request.filename).stem).strip("-")
+    stem = re.sub(r"[^a-zA-Z0-9_-]+", "-", Path(filename).stem).strip("-")
     stem = stem[:48] or "asset"
     filename = f"{stem}-{uuid.uuid4().hex[:10]}{extension}"
     path = _asset_path(filename)
@@ -505,6 +636,83 @@ def resolve_model_path(path_value: str) -> Path:
     return path
 
 
+def _select_gguf_file() -> Path | None:
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+    except Exception as exc:
+        raise RuntimeError("Native file picker is unavailable in this Python environment.") from exc
+
+    root = tk.Tk()
+    root.withdraw()
+    root.attributes("-topmost", True)
+    try:
+        filename = filedialog.askopenfilename(
+            title="Select a GGUF model",
+            filetypes=(("GGUF model files", "*.gguf"), ("All files", "*.*")),
+        )
+    finally:
+        root.destroy()
+    if not filename:
+        return None
+    return Path(filename)
+
+
+def _resolve_background_image_path(path_value: str) -> Path:
+    path = Path(path_value).expanduser().resolve()
+    if path.suffix.lower() not in ALLOWED_BACKGROUND_SUFFIXES:
+        raise ValueError("Select a PNG, JPG, JPEG, WebP, or GIF image file.")
+    if not path.exists() or not path.is_file():
+        raise FileNotFoundError(f"Background image not found: {path}")
+    return path
+
+
+def _is_safe_background_reference(path_value: str) -> bool:
+    value = path_value.strip()
+    if not value:
+        return True
+    if value.startswith("/api/assets/") or value.startswith("/static/"):
+        return _looks_like_image_reference(value)
+    if value.startswith("data:image/"):
+        return True
+    if re.match(r"^https?://", value, flags=re.IGNORECASE):
+        return _looks_like_image_reference(value)
+    return False
+
+
+def _looks_like_image_reference(value: str) -> bool:
+    return bool(re.search(r"\.(png|jpe?g|webp|gif)(?:[?#].*)?$", value, flags=re.IGNORECASE))
+
+
+def _unique_model_path(filename: str) -> Path:
+    safe_name = Path(filename).name
+    if not safe_name.lower().endswith(".gguf"):
+        raise ValueError("Only .gguf model files can be imported.")
+    target = (settings.models_dir / safe_name).resolve()
+    models_root = settings.models_dir.resolve()
+    if models_root not in target.parents:
+        raise ValueError("Resolved model path escaped the local models folder.")
+    if not target.exists():
+        return target
+    stem = target.stem
+    suffix = target.suffix
+    for index in range(1, 1000):
+        candidate = (settings.models_dir / f"{stem}-{index}{suffix}").resolve()
+        if not candidate.exists():
+            return candidate
+    raise ValueError("Could not create a unique filename for the imported model.")
+
+
+def _model_file_from_path(path: Path) -> LocalModelFile:
+    stat = path.stat()
+    return LocalModelFile(
+        name=path.name,
+        path=str(path),
+        relative_path=str(path.relative_to(settings.models_dir)),
+        size_bytes=stat.st_size,
+    )
+
+
 def _json_path(folder: Path, item_id: str) -> Path:
     safe_id = _safe_id(item_id)
     path = (folder / f"{safe_id}.json").resolve()
@@ -585,6 +793,16 @@ def _first_text(payload: dict[str, Any], *keys: str) -> str:
     return ""
 
 
+def _first_bool(payload: dict[str, Any], *keys: str, default: bool = False) -> bool:
+    for key in keys:
+        value = payload.get(key)
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str) and value.strip():
+            return value.strip().lower() in {"1", "true", "yes", "on", "enabled"}
+    return default
+
+
 def _clear_default_personas(except_id: str) -> None:
     for persona in list_personas():
         if persona.id == except_id or not persona.is_default:
@@ -600,8 +818,8 @@ def _asset_path(filename: str) -> Path:
     if not re.fullmatch(r"[A-Za-z0-9_.-]{1,180}", safe_name):
         raise ValueError("Invalid asset filename.")
     suffix = Path(safe_name).suffix.lower()
-    if suffix not in {".png", ".jpg", ".jpeg"}:
-        raise ValueError("Only PNG and JPG assets can be used.")
+    if suffix not in set(ALLOWED_ASSET_MIME_TYPES.values()) | {".jpeg"}:
+        raise ValueError("Only PNG, JPG, WebP, and GIF assets can be used.")
     path = (settings.assets_dir / safe_name).resolve()
     folder_root = settings.assets_dir.resolve()
     if folder_root not in path.parents:

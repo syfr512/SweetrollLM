@@ -9,7 +9,7 @@ from typing import Any
 from collections.abc import AsyncIterator
 
 import httpx
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import FileResponse, Response, StreamingResponse
 
 from .config import settings
@@ -18,8 +18,11 @@ from .inference.context import orchestrate_chat_context
 from .logging_utils import read_recent_logs
 from .model_downloader import download_manager
 from .schemas import (
+    AppAppearanceSettings,
     ApiProviderProfile,
     ApiProviderSaveRequest,
+    ApiProviderTestResponse,
+    BackgroundSelectResponse,
     CharacterProfile,
     CharacterSaveRequest,
     AssetFile,
@@ -41,6 +44,7 @@ from .schemas import (
     ImageGenerationRequest,
     ImageGenerationResponse,
     InferenceSource,
+    LocalModelImportResponse,
     LocalModelLoadRequest,
     LocalModelStatus,
     LorebookProfile,
@@ -53,6 +57,7 @@ from .schemas import (
     VisionCaptionResponse,
 )
 from .storage import (
+    clear_global_background_image,
     delete_api_provider,
     delete_character,
     delete_chat_session,
@@ -60,12 +65,15 @@ from .storage import (
     delete_persona,
     export_character_payload,
     get_api_provider,
+    get_app_settings,
     get_asset_path,
     get_character,
     get_chat_session,
+    get_global_background_path,
     get_lorebook,
     get_persona,
     import_character_payload,
+    import_local_gguf_model,
     list_api_providers,
     list_characters,
     list_chat_sessions,
@@ -73,7 +81,9 @@ from .storage import (
     list_personas,
     new_chat_id,
     save_api_provider,
+    save_app_settings,
     save_asset,
+    save_asset_bytes,
     save_chat_session,
     save_character,
     save_lorebook,
@@ -105,6 +115,57 @@ async def logs(limit: int = Query(500, ge=1, le=2000)) -> ConsoleLogResponse:
     return ConsoleLogResponse(lines=lines, text="\n".join(lines), truncated=truncated)
 
 
+@router.get("/app-settings", response_model=AppAppearanceSettings)
+async def app_settings() -> AppAppearanceSettings:
+    return get_app_settings()
+
+
+@router.put("/app-settings", response_model=AppAppearanceSettings)
+async def update_app_settings(request: AppAppearanceSettings) -> AppAppearanceSettings:
+    try:
+        return save_app_settings(request)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/app-settings/background/upload", response_model=BackgroundSelectResponse)
+async def upload_app_background(request: Request) -> BackgroundSelectResponse:
+    try:
+        filename, content, media_type = await _read_multipart_image(request, "background")
+        asset = save_asset_bytes(filename, content, media_type)
+        current = get_app_settings()
+        app_settings = save_app_settings(
+            current.model_copy(update={"global_background_path": asset.url})
+        )
+        return BackgroundSelectResponse(
+            selected=True,
+            settings=app_settings,
+            message=f"Global chat background uploaded as {asset.filename}.",
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/app-settings/background/clear", response_model=AppAppearanceSettings)
+async def clear_app_background() -> AppAppearanceSettings:
+    try:
+        return clear_global_background_image()
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/app-settings/background")
+async def app_background_file() -> FileResponse:
+    try:
+        path = get_global_background_path()
+        media_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+        return FileResponse(path, media_type=media_type)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @router.get("/api-providers", response_model=list[ApiProviderProfile])
 async def api_providers() -> list[ApiProviderProfile]:
     return list_api_providers()
@@ -116,6 +177,11 @@ async def create_api_provider(request: ApiProviderSaveRequest) -> ApiProviderPro
         return save_api_provider(request)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/api-providers/test", response_model=ApiProviderTestResponse)
+async def test_api_provider(request: ApiProviderSaveRequest) -> ApiProviderTestResponse:
+    return await _test_api_provider_connection(request)
 
 
 @router.get("/api-providers/{provider_id}", response_model=ApiProviderProfile)
@@ -339,13 +405,7 @@ async def caption_image(request: VisionCaptionRequest) -> VisionCaptionResponse:
 
     try:
         headers = _extension_headers(request.api_key)
-        payload = {
-            "model": request.provider,
-            "prompt": request.prompt,
-            "image": request.data_url,
-            "images": [request.data_url],
-            "filename": request.filename,
-        }
+        payload = _build_vision_caption_payload(request)
         async with httpx.AsyncClient(timeout=90.0) as client:
             response = await client.post(endpoint, headers=headers, json=payload)
             response.raise_for_status()
@@ -466,6 +526,27 @@ async def remove_chat(chat_id: str) -> Response:
 @router.get("/models/local")
 async def list_local_models() -> dict[str, object]:
     return {"models": scan_gguf_models(), "status": local_engine.status()}
+
+
+@router.post("/models/import-local", response_model=LocalModelImportResponse)
+async def import_local_model() -> LocalModelImportResponse:
+    try:
+        selected, models = await asyncio.to_thread(import_local_gguf_model)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Could not import local GGUF model: {exc}",
+        ) from exc
+    return LocalModelImportResponse(
+        selected=selected is not None,
+        message=(
+            f"Imported {selected.name} into storage/models."
+            if selected
+            else "No model selected. Showing scanned local models."
+        ),
+        model=selected,
+        models=models,
+    )
 
 
 @router.get("/models/search", response_model=HuggingFaceSearchResponse)
@@ -604,6 +685,28 @@ async def stream_chat(request: ChatRequest) -> StreamingResponse:
                 async for token in engine.stream_chat(engine_request):
                     assistant_parts.append(token)
                     yield _event({"type": "token", "text": token})
+        except TimeoutError as exc:
+            fallback_request = _fallback_request_for_cloud_failure(prepared_request, exc)
+            if assistant_parts or fallback_request is None:
+                yield _event(
+                    {
+                        "type": "error",
+                        "message": "Generation timed out before the model returned a complete response.",
+                    }
+                )
+                return
+            yield _event(
+                {
+                    "type": "meta",
+                    "source": "cloud_fallback",
+                    "chat_id": chat_id,
+                    "message": "Primary provider timed out; using alternate fallback profile.",
+                }
+            )
+            async with asyncio.timeout(settings.generation_timeout_seconds):
+                async for token in cloud_engine.stream_chat(fallback_request):
+                    assistant_parts.append(token)
+                    yield _event({"type": "token", "text": token})
             assistant_text = "".join(assistant_parts).strip()
             if assistant_text:
                 asyncio.create_task(
@@ -615,15 +718,47 @@ async def stream_chat(request: ChatRequest) -> StreamingResponse:
                     )
                 )
             yield _event({"type": "done", "chat_id": chat_id})
-        except TimeoutError:
+            return
+        except Exception as exc:
+            fallback_request = _fallback_request_for_cloud_failure(prepared_request, exc)
+            if assistant_parts or fallback_request is None:
+                yield _event({"type": "error", "message": str(exc)})
+                return
             yield _event(
                 {
-                    "type": "error",
-                    "message": "Generation timed out before the model returned a complete response.",
+                    "type": "meta",
+                    "source": "cloud_fallback",
+                    "chat_id": chat_id,
+                    "message": "Primary provider failed; using alternate fallback profile.",
                 }
             )
-        except Exception as exc:
-            yield _event({"type": "error", "message": str(exc)})
+            async with asyncio.timeout(settings.generation_timeout_seconds):
+                async for token in cloud_engine.stream_chat(fallback_request):
+                    assistant_parts.append(token)
+                    yield _event({"type": "token", "text": token})
+            assistant_text = "".join(assistant_parts).strip()
+            if assistant_text:
+                asyncio.create_task(
+                    asyncio.to_thread(
+                        _save_completed_chat,
+                        request,
+                        chat_id,
+                        assistant_text,
+                    )
+                )
+            yield _event({"type": "done", "chat_id": chat_id})
+            return
+        assistant_text = "".join(assistant_parts).strip()
+        if assistant_text:
+            asyncio.create_task(
+                asyncio.to_thread(
+                    _save_completed_chat,
+                    request,
+                    chat_id,
+                    assistant_text,
+                )
+            )
+        yield _event({"type": "done", "chat_id": chat_id})
 
     return StreamingResponse(
         events(),
@@ -640,10 +775,7 @@ async def complete_chat(request: ChatRequest) -> ChatCompletionResponse:
     assistant_parts: list[str] = []
 
     try:
-        engine, engine_request, engine_source = _select_chat_engine(prepared_request)
-        async with asyncio.timeout(settings.generation_timeout_seconds):
-            async for token in engine.stream_chat(engine_request):
-                assistant_parts.append(token)
+        assistant_parts, engine_source = await _collect_chat_response(prepared_request)
     except TimeoutError as exc:
         raise HTTPException(
             status_code=408,
@@ -701,6 +833,182 @@ def _select_chat_engine(request: ChatRequest) -> tuple[object, ChatRequest, str]
         }
     )
     return cloud_engine, fallback_request, "external_fallback"
+
+
+async def _collect_chat_response(request: ChatRequest) -> tuple[list[str], str]:
+    assistant_parts: list[str] = []
+    engine, engine_request, engine_source = _select_chat_engine(request)
+    try:
+        async with asyncio.timeout(settings.generation_timeout_seconds):
+            async for token in engine.stream_chat(engine_request):
+                assistant_parts.append(token)
+        return assistant_parts, engine_source
+    except TimeoutError as exc:
+        fallback_request = _fallback_request_for_cloud_failure(request, exc)
+        if assistant_parts or fallback_request is None:
+            raise
+    except Exception as exc:
+        fallback_request = _fallback_request_for_cloud_failure(request, exc)
+        if assistant_parts or fallback_request is None:
+            raise
+
+    fallback_parts: list[str] = []
+    async with asyncio.timeout(settings.generation_timeout_seconds):
+        async for token in cloud_engine.stream_chat(fallback_request):
+            fallback_parts.append(token)
+    return fallback_parts, "cloud_fallback"
+
+
+def _fallback_request_for_cloud_failure(
+    request: ChatRequest, exc: BaseException
+) -> ChatRequest | None:
+    if request.source != InferenceSource.cloud:
+        return None
+    if not _is_fallback_trigger(exc):
+        return None
+    fallback = _fallback_api_provider(request)
+    if fallback is None:
+        return None
+    return request.model_copy(
+        update={
+            "api_provider_id": fallback.id,
+            "cloud": CloudSettings(
+                provider=_cloud_provider_from_base_url(fallback.base_url),
+                base_url=fallback.base_url,
+                model=fallback.default_model,
+                api_key=fallback.api_key or None,
+            ),
+        }
+    )
+
+
+def _fallback_api_provider(request: ChatRequest) -> ApiProviderProfile | None:
+    current_id = request.api_provider_id or ""
+    current_cloud = request.cloud
+    for provider in list_api_providers():
+        if not provider.is_fallback or provider.id == current_id:
+            continue
+        if (
+            current_cloud
+            and provider.base_url.rstrip("/") == current_cloud.base_url.rstrip("/")
+            and provider.default_model == current_cloud.model
+        ):
+            continue
+        return provider
+    return None
+
+
+def _is_fallback_trigger(exc: BaseException) -> bool:
+    if isinstance(exc, TimeoutError):
+        return True
+    text = str(exc).lower()
+    return any(
+        marker in text
+        for marker in (
+            "http 408",
+            "http 409",
+            "http 425",
+            "http 429",
+            "http 500",
+            "http 502",
+            "http 503",
+            "http 504",
+            "rate limit",
+            "rate-limit",
+            "timeout",
+            "timed out",
+            "temporarily unavailable",
+        )
+    )
+
+
+def _cloud_provider_from_base_url(base_url: str) -> CloudProvider:
+    normalized = base_url.lower()
+    if "openrouter.ai" in normalized:
+        return CloudProvider.openrouter
+    if "api.openai.com" in normalized:
+        return CloudProvider.openai
+    return CloudProvider.custom
+
+
+async def _test_api_provider_connection(
+    request: ApiProviderSaveRequest,
+) -> ApiProviderTestResponse:
+    base_url = request.base_url.strip().rstrip("/")
+    model = request.default_model.strip()
+    if not base_url:
+        return ApiProviderTestResponse(ok=False, message="Base URL is required.")
+    if not model:
+        return ApiProviderTestResponse(ok=False, message="Select or enter a model first.")
+
+    headers = {"Content-Type": "application/json"}
+    if request.api_key.strip():
+        headers["Authorization"] = f"Bearer {request.api_key.strip()}"
+    if _cloud_provider_from_base_url(base_url) == CloudProvider.openrouter:
+        headers["X-Title"] = "SweetrollLM"
+
+    models_url = f"{base_url}/models"
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            models_response = await client.get(models_url, headers=headers)
+            if models_response.status_code == 200:
+                return ApiProviderTestResponse(
+                    ok=True,
+                    message="Connection validated through the provider model registry.",
+                    status_code=models_response.status_code,
+                    endpoint=models_url,
+                )
+            if models_response.status_code in {401, 403}:
+                return ApiProviderTestResponse(
+                    ok=False,
+                    message="Authentication failed. Check the API key for this profile.",
+                    status_code=models_response.status_code,
+                    endpoint=models_url,
+                )
+
+            chat_url = f"{base_url}/chat/completions"
+            probe_payload = {
+                "model": model,
+                "messages": [{"role": "user", "content": "ping"}],
+                "max_tokens": 1,
+                "temperature": 0,
+                "stream": False,
+            }
+            chat_response = await client.post(chat_url, headers=headers, json=probe_payload)
+            if 200 <= chat_response.status_code < 300:
+                return ApiProviderTestResponse(
+                    ok=True,
+                    message="Connection validated through a one-token chat probe.",
+                    status_code=chat_response.status_code,
+                    endpoint=chat_url,
+                )
+            return ApiProviderTestResponse(
+                ok=False,
+                message=(
+                    f"Provider rejected the validation request with HTTP "
+                    f"{chat_response.status_code}: {chat_response.text[:240]}"
+                ),
+                status_code=chat_response.status_code,
+                endpoint=chat_url,
+            )
+    except httpx.TimeoutException:
+        return ApiProviderTestResponse(
+            ok=False,
+            message="Connection test timed out. Verify the endpoint is reachable.",
+            endpoint=models_url,
+        )
+    except httpx.RequestError as exc:
+        return ApiProviderTestResponse(
+            ok=False,
+            message=f"Connection failed: {exc}",
+            endpoint=models_url,
+        )
+    except Exception as exc:
+        return ApiProviderTestResponse(
+            ok=False,
+            message=f"Provider validation failed: {exc}",
+            endpoint=models_url,
+        )
 
 
 def _prepare_generation_request(request: ChatRequest) -> ChatRequest:
@@ -822,6 +1130,102 @@ def _build_image_generation_payload(request: ImageGenerationRequest) -> dict[str
     return common
 
 
+def _build_vision_caption_payload(request: VisionCaptionRequest) -> dict[str, Any]:
+    model = request.model.strip() or request.provider
+    if request.provider in {"openai", "openrouter", "google"}:
+        return {
+            "model": model,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": request.prompt},
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": request.data_url},
+                        },
+                    ],
+                }
+            ],
+            "max_tokens": 512,
+        }
+    if request.provider == "ollama":
+        return {
+            "model": model,
+            "prompt": request.prompt,
+            "images": [_strip_data_url_prefix(request.data_url)],
+            "stream": False,
+        }
+    return {
+        "model": model,
+        "prompt": request.prompt,
+        "image": request.data_url,
+        "images": [request.data_url],
+        "filename": request.filename,
+    }
+
+
+def _strip_data_url_prefix(data_url: str) -> str:
+    if "," in data_url and data_url.startswith("data:"):
+        return data_url.split(",", 1)[1]
+    return data_url
+
+
+async def _read_multipart_image(request: Request, field_name: str) -> tuple[str, bytes, str]:
+    content_type = request.headers.get("content-type", "")
+    match = re.search(r'boundary=(?:"([^"]+)"|([^;]+))', content_type, flags=re.IGNORECASE)
+    if not match:
+        raise ValueError("Upload request must be multipart/form-data.")
+    boundary = (match.group(1) or match.group(2) or "").strip()
+    if not boundary:
+        raise ValueError("Upload request is missing a multipart boundary.")
+
+    delimiter = f"--{boundary}".encode("utf-8")
+    body = await request.body()
+    for raw_part in body.split(delimiter):
+        part = raw_part.strip(b"\r\n")
+        if not part or part == b"--":
+            continue
+        if part.endswith(b"--"):
+            part = part[:-2].rstrip(b"\r\n")
+        header_blob, separator, content = part.partition(b"\r\n\r\n")
+        if not separator:
+            continue
+        headers = _parse_multipart_headers(header_blob)
+        disposition = headers.get("content-disposition", "")
+        name = _multipart_header_param(disposition, "name")
+        filename = _multipart_header_param(disposition, "filename")
+        if name != field_name or not filename:
+            continue
+        if content.endswith(b"\r\n"):
+            content = content[:-2]
+        media_type = headers.get("content-type") or mimetypes.guess_type(filename)[0] or ""
+        if not media_type.startswith("image/"):
+            raise ValueError("Global background upload must be an image file.")
+        return filename, content, media_type
+    raise ValueError("No background image file was included in the upload.")
+
+
+def _parse_multipart_headers(header_blob: bytes) -> dict[str, str]:
+    headers: dict[str, str] = {}
+    for line in header_blob.decode("utf-8", errors="replace").split("\r\n"):
+        name, separator, value = line.partition(":")
+        if separator:
+            headers[name.strip().lower()] = value.strip()
+    return headers
+
+
+def _multipart_header_param(header_value: str, parameter: str) -> str:
+    match = re.search(
+        rf'{re.escape(parameter)}=(?:"([^"]*)"|([^;]*))',
+        header_value,
+        flags=re.IGNORECASE,
+    )
+    if not match:
+        return ""
+    return (match.group(1) or match.group(2) or "").strip()
+
+
 def _extract_image_url(data: dict[str, Any]) -> str:
     for key in ("image_url", "url", "output_url"):
         value = data.get(key)
@@ -848,10 +1252,12 @@ def _extract_image_url(data: dict[str, Any]) -> str:
 
 
 def _extract_caption(data: dict[str, Any]) -> str:
-    for key in ("caption", "description", "text", "output"):
+    for key in ("caption", "description", "text", "output", "response", "message"):
         value = data.get(key)
         if isinstance(value, str) and value.strip():
             return value.strip()
+        if isinstance(value, dict) and isinstance(value.get("content"), str):
+            return value["content"].strip()
 
     choices = data.get("choices")
     if isinstance(choices, list) and choices:
@@ -860,6 +1266,15 @@ def _extract_caption(data: dict[str, Any]) -> str:
             message = first.get("message")
             if isinstance(message, dict) and isinstance(message.get("content"), str):
                 return message["content"].strip()
+            if isinstance(message, dict) and isinstance(message.get("content"), list):
+                parts = [
+                    item.get("text", "")
+                    for item in message["content"]
+                    if isinstance(item, dict)
+                ]
+                text = "\n".join(part for part in parts if part).strip()
+                if text:
+                    return text
             if isinstance(first.get("text"), str):
                 return first["text"].strip()
 

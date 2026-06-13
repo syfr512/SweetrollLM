@@ -22,6 +22,7 @@ storage/personas/*
 storage/lorebooks/*
 !storage/lorebooks/.gitkeep
 storage/api_providers.json
+storage/app_settings.json
 storage/assets/*
 !storage/assets/.gitkeep
 storage/extensions/*

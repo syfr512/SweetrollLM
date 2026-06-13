@@ -18,14 +18,17 @@
     <link rel="icon" type="image/png" href="/static/assets/icon.png" />
     <link rel="apple-touch-icon" href="/static/assets/icon.png" />
     <meta name="msapplication-TileImage" content="/static/assets/icon.png" />
-    <link rel="stylesheet" href="/static/css/tailwind.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/static/css/tailwind.css?v=transparency-hotfix-20260613" />
     <script defer src="/static/js/markdown.js"></script>
-    <script defer src="/static/js/app.js"></script>
+    <script defer src="/static/js/app.js?v=transparency-hotfix-20260613"></script>
   </head>
   <body>
     <div id="startupOverlay" class="startup-overlay" aria-live="polite">
       <div class="startup-card">
-        <div class="brand-mark startup-mark">SL</div>
+        <div class="brand-mark startup-mark"><img src="/static/assets/icon.png" alt="SweetrollLM" /></div>
         <p class="startup-quote">"Let me guess, someone stole your sweetroll?"</p>
         <div class="startup-loader" aria-hidden="true">
           <span></span>
@@ -39,7 +42,7 @@
     <div id="appShell" class="app-shell">
       <aside id="settingsSidebar" class="sidebar">
         <div class="brand-row">
-          <div class="brand-mark">SL</div>
+          <div class="brand-mark"><img src="/static/assets/icon.png" alt="SweetrollLM" /></div>
           <div class="brand-copy">
             <h1>SweetrollLM</h1>
             <p id="connectionStatus">Starting</p>
@@ -79,6 +82,26 @@
           </select>
         </section>
 
+        <section id="sidebarLocalModelPanel" class="panel sidebar-local-model-panel">
+          <div class="panel-title">
+            <h2>Local Model</h2>
+            <button id="sidebarRefreshModels" class="ghost-button" type="button">Scan</button>
+          </div>
+          <div class="active-model-row">
+            <span id="sidebarActiveModelDot" class="status-dot"></span>
+            <p id="sidebarModelStatus">No model loaded</p>
+          </div>
+          <label class="field">
+            <span>GGUF Model</span>
+            <select id="sidebarLocalModelPath" class="input"></select>
+          </label>
+          <div class="button-row">
+            <button id="sidebarLoadModel" class="primary-button" type="button">Load</button>
+            <button id="sidebarUnloadModel" class="secondary-button" type="button">Unload</button>
+          </div>
+          <p id="sidebarModelInlineError" class="inline-error hidden"></p>
+        </section>
+
         <section id="cloudPanel" class="panel hidden">
           <div class="panel-title">
             <h2>Cloud API</h2>
@@ -113,7 +136,8 @@
           </label>
           <label class="field">
             <span>Model</span>
-            <input id="cloudModel" class="input" data-cloud-field value="gpt-4o-mini" />
+            <select id="cloudModelSelect" class="input" data-cloud-field></select>
+            <input id="cloudModel" class="input hidden" data-cloud-field placeholder="Custom model slug" />
           </label>
           <label class="field">
             <span>API Key</span>
@@ -123,7 +147,12 @@
             <input id="apiProviderDefault" type="checkbox" data-cloud-field />
             <span>Set as Active Default</span>
           </label>
+          <label class="toggle-row switch-row">
+            <input id="apiProviderFallback" type="checkbox" data-cloud-field />
+            <span>Use as Alternate Fallback</span>
+          </label>
           <div class="button-row">
+            <button id="testApiProvider" class="secondary-button" type="button">Connect &amp; Test</button>
             <button id="saveApiProvider" class="primary-button" type="button">Save Provider</button>
             <button id="deleteApiProvider" class="secondary-button danger-button" type="button">Delete</button>
           </div>
@@ -141,6 +170,15 @@
               <option value="sweetroll-light">Sweetroll Light</option>
             </select>
           </label>
+          <div class="field background-picker-row">
+            <span>Global Chat Background</span>
+            <div class="button-row compact-actions">
+              <button id="selectGlobalBackground" class="secondary-button" type="button">Browse</button>
+              <button id="clearGlobalBackground" class="ghost-button" type="button">Clear</button>
+            </div>
+            <input id="globalBgFileInput" type="file" accept="image/*" class="hidden" />
+            <p id="globalBackgroundStatus" class="muted path-preview">Theme default active.</p>
+          </div>
           <div class="two-col">
             <label class="field">
               <span>Temperature</span>
@@ -165,7 +203,11 @@
           </label>
           <label class="field">
             <span>Chat Transparency <strong id="chatTransparencyValue">82%</strong></span>
-            <input id="chatTransparency" class="range-input" type="range" min="0.1" max="1" step="0.05" value="0.82" />
+            <input id="chatTransparency" class="range-input" type="range" min="10" max="100" step="5" value="82" />
+          </label>
+          <label class="field">
+            <span>Background Opacity <strong id="backgroundOpacityValue">90%</strong></span>
+            <input id="backgroundOpacitySlider" class="range-input" type="range" min="0" max="100" step="5" value="90" />
           </label>
           <button id="resetSetupWizard" class="secondary-button" type="button">Reset Setup Wizard</button>
         </section>
@@ -185,23 +227,28 @@
 
         <section class="panel panel-grow">
           <div class="panel-title">
-            <h2>Character</h2>
+            <h2>Characters</h2>
             <button id="editCurrentCharacter" class="ghost-button" type="button">Cards</button>
           </div>
-          <div class="avatar-config">
-            <div id="characterAvatarPreview" class="avatar avatar-large">A</div>
-            <label class="field fill">
-              <span>Name</span>
-              <input id="characterName" class="input" value="Aria" />
-            </label>
+          <input id="characterName" type="hidden" value="" />
+          <input id="characterAvatar" type="hidden" />
+          <div id="characterAvatarPreview" class="avatar avatar-large hidden">A</div>
+          <div id="sidebarCharacterList" class="sidebar-card-list">
+            <div class="empty-state compact-empty">No saved character cards yet.</div>
           </div>
-          <label class="field">
-            <span>Avatar URL</span>
-            <input id="characterAvatar" class="input" placeholder="/static/img/avatar.png" />
-          </label>
+          <div class="panel-title shelf-title">
+            <h2>Past Chats</h2>
+            <div class="button-row compact-actions">
+              <button id="toggleHistoryShelf" class="ghost-button" type="button" aria-expanded="true">Hide</button>
+              <button id="newChatSidebar" class="ghost-button" type="button">New</button>
+            </div>
+          </div>
+          <div id="chatHistoryShelf" class="history-shelf">
+            <div class="empty-state compact-empty">Select a character to see timelines.</div>
+          </div>
           <label class="field fill">
             <span>System Prompt</span>
-            <textarea id="systemPrompt" class="input textarea">You are Aria, a thoughtful roleplay assistant. Stay in character, respond vividly, and adapt to the user's scene.</textarea>
+            <textarea id="systemPrompt" class="input textarea" placeholder="Optional system prompt for the active character"></textarea>
           </label>
           <div class="active-model-row">
             <span id="activeLorebookDot" class="status-dot"></span>
@@ -210,7 +257,7 @@
         </section>
       </aside>
 
-      <main class="chat-main">
+      <main id="chatMain" class="chat-main">
         <div id="chatBackdrop" class="chat-backdrop" aria-hidden="true"></div>
         <header class="chat-header">
           <div class="chat-heading">
@@ -222,13 +269,14 @@
               </svg>
             </button>
             <div>
-              <h2 id="chatTitle">Aria</h2>
-              <p id="chatSubtitle">Local Engine Mode</p>
+              <h2 id="chatTitle">No Character Selected</h2>
+              <p id="chatSubtitle">Create or import a card to begin</p>
             </div>
           </div>
           <div class="chat-actions">
             <button id="toggleExtensions" class="secondary-button" type="button" aria-expanded="false" aria-controls="extensionsDrawer">Extensions</button>
             <button id="openConsoleLogs" class="secondary-button" type="button">View Console Logs</button>
+            <button id="newChat" class="secondary-button" type="button">New Chat</button>
             <select id="chatHistorySelect" class="input session-select" title="Past chats">
               <option value="">Past Chats</option>
             </select>
@@ -298,6 +346,7 @@
                 <input id="imageNegativePrompt" class="input" placeholder="blur, low quality, artifacts" />
               </label>
               <div class="button-row">
+                <button id="saveImageConfig" class="secondary-button" type="button">Save Configuration</button>
                 <button id="generateImage" class="primary-button" type="button">Generate</button>
                 <p id="imageGenerationStatus" class="muted">Generated media is appended to the active chat.</p>
               </div>
@@ -308,11 +357,6 @@
                 <h2>Vision Captioning</h2>
                 <span class="badge">VLM</span>
               </div>
-              <div id="visionDropzone" class="dropzone" tabindex="0" role="button" aria-label="Attach image for vision context">
-                <strong>Drop an image here</strong>
-                <span>or use the attach button in the composer.</span>
-              </div>
-              <input id="visionImageInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden />
               <label class="field">
                 <span>Vision Endpoint</span>
                 <input id="visionEndpoint" class="input" placeholder="http://127.0.0.1:11434/api/generate or custom VLM endpoint" />
@@ -323,9 +367,20 @@
                   <option value="custom">Custom</option>
                   <option value="llava">LLaVA</option>
                   <option value="qwen-vl">Qwen-VL</option>
+                  <option value="openrouter">OpenRouter Vision</option>
                   <option value="openai">Vision API</option>
+                  <option value="google">Google Vision</option>
+                  <option value="ollama">Ollama / Local</option>
                 </select>
               </label>
+              <label class="field">
+                <span>Vision Model</span>
+                <select id="visionModelSelect" class="input"></select>
+                <input id="visionModel" class="input hidden" placeholder="Custom vision model slug" />
+              </label>
+              <div class="button-row">
+                <button id="saveVisionConfig" class="secondary-button" type="button">Save Configuration</button>
+              </div>
               <div id="visionAttachmentPreview" class="attachment-preview hidden"></div>
               <p id="visionCaptionStatus" class="muted">Caption context is injected invisibly into the next generations.</p>
             </section>
@@ -406,13 +461,14 @@
                 <span>Provider</span>
                 <select id="setupProviderType" class="input">
                   <option value="openrouter">OpenRouter</option>
-                  <option value="openai">OpenAI</option>
+                  <option value="openai">ChatGPT / OpenAI</option>
                   <option value="custom">Custom</option>
                 </select>
               </label>
               <label class="field">
                 <span>Default Model</span>
-                <input id="setupCloudModel" class="input" value="openai/gpt-4o-mini" />
+                <select id="setupCloudModelSelect" class="input"></select>
+                <input id="setupCustomModel" class="input hidden" placeholder="Custom model id" />
               </label>
             </div>
             <label class="field">
@@ -420,6 +476,7 @@
               <input id="setupApiKey" class="input" type="password" autocomplete="off" placeholder="Optional" />
             </label>
             <div class="button-row">
+              <button id="setupTestApi" class="secondary-button" type="button">Connect &amp; Test</button>
               <button id="setupSaveApi" class="primary-button" type="button">Save & Continue</button>
               <button id="setupSkipApi" class="secondary-button" type="button">Skip API</button>
             </div>
@@ -433,7 +490,11 @@
               <button id="setupOpenMarketplace" class="secondary-button" type="button">Open Marketplace</button>
               <button id="setupSkipModels" class="secondary-button" type="button">Skip for Now</button>
             </div>
-            <p id="setupModelStatus" class="muted">Place GGUF files in storage/models/ or use the Marketplace downloader.</p>
+            <div id="setupModelList" class="setup-model-list">
+              <div class="empty-state compact-empty">No local GGUF files scanned yet.</div>
+            </div>
+            <button id="setupLoadModel" class="primary-button" type="button">Load Selected Model</button>
+            <p id="setupModelStatus" class="muted">Place GGUF files in storage/models/, import one from disk, or use the Marketplace downloader.</p>
           </article>
 
           <article class="setup-step" data-setup-step="3">
@@ -776,7 +837,7 @@
               <div id="characterEditorAvatar" class="avatar avatar-large">A</div>
               <label class="field fill">
                 <span>Name</span>
-                <input id="characterEditorName" class="input" value="Aria" />
+                <input id="characterEditorName" class="input" value="" placeholder="Character name" />
               </label>
             </div>
             <label class="field">
@@ -785,7 +846,19 @@
             </label>
             <label class="field">
               <span>Avatar Image</span>
-              <input id="characterAvatarFile" class="input" type="file" accept="image/png,image/jpeg" />
+              <input id="characterAvatarFile" class="input" type="file" accept="image/png,image/jpeg,image/webp" />
+            </label>
+            <label class="toggle-row switch-row">
+              <input id="characterEditorBackdrop" type="checkbox" checked />
+              <span>Enable Custom Card Chat Backdrop</span>
+            </label>
+            <label class="field">
+              <span>Card Backdrop URL/File</span>
+              <input id="characterEditorBackgroundUrl" class="input" placeholder="/api/assets/card-background.png" />
+            </label>
+            <label class="field">
+              <span>Card Backdrop Image</span>
+              <input id="characterBackgroundFile" class="input" type="file" accept="image/png,image/jpeg,image/webp" />
             </label>
             <label class="field">
               <span>Description</span>
@@ -811,6 +884,7 @@
               <button id="saveCharacter" class="primary-button" type="button">Save Card</button>
               <button id="useCharacter" class="secondary-button" type="button">Use Card</button>
               <button id="exportCharacter" class="secondary-button" type="button">Export Character</button>
+              <button id="deleteCharacter" class="secondary-button danger-button" type="button">Delete</button>
             </div>
             <p id="characterSaveStatus" class="muted">Local JSON profiles are stored in storage/characters.</p>
           </section>
@@ -875,9 +949,31 @@
             <div class="button-row">
               <button id="savePersona" class="primary-button" type="button">Save Persona</button>
               <button id="usePersona" class="secondary-button" type="button">Use Persona</button>
+              <button id="deletePersona" class="secondary-button danger-button" type="button">Delete</button>
             </div>
             <p id="personaSaveStatus" class="muted">Persona profiles are stored in storage/personas.</p>
           </section>
+        </div>
+      </div>
+    </div>
+
+    <div id="new-chat-modal" class="modal-overlay hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="new-chat-title">
+      <div class="modal-window prompt-window">
+        <header class="modal-header">
+          <div>
+            <h2 id="new-chat-title">Start a New Timeline?</h2>
+            <p>Would you like to archive the current timeline and clear the active view for a new chat session?</p>
+          </div>
+          <button id="cancelNewChat" class="icon-button close-button" type="button" title="Cancel" aria-label="Cancel new chat">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
+        </header>
+        <div class="button-row prompt-actions">
+          <button id="confirmNewChat" class="primary-button" type="button">Archive &amp; New Chat</button>
+          <button id="cancelNewChatSecondary" class="secondary-button" type="button">Keep Current Timeline</button>
         </div>
       </div>
     </div>
@@ -928,6 +1024,7 @@
             <div class="button-row">
               <button id="saveLorebook" class="primary-button" type="button">Save Lorebook</button>
               <button id="useLorebook" class="secondary-button" type="button">Use Session</button>
+              <button id="deleteLorebook" class="secondary-button danger-button" type="button">Delete</button>
             </div>
             <p id="lorebookSaveStatus" class="muted">Keyword lists use commas, like Excalibur, holy sword.</p>
           </section>

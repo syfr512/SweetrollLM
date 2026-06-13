@@ -30,7 +30,7 @@ class AppSettings:
     external_api_base_url: str = os.getenv(
         "SWEETROLL_LM_EXTERNAL_API_BASE_URL", "http://127.0.0.1:5001/v1"
     )
-    external_api_model: str = os.getenv("SWEETROLL_LM_EXTERNAL_API_MODEL", "local-model")
+    external_api_model: str = os.getenv("SWEETROLL_LM_EXTERNAL_API_MODEL", "koboldcpp")
     external_api_key: str = os.getenv("SWEETROLL_LM_EXTERNAL_API_KEY", "")
     native_llama_enabled: bool = _env_bool("SWEETROLL_LM_NATIVE_LLAMA_ENABLED", True)
     max_response_tokens: int = int(os.getenv("SWEETROLL_LM_MAX_RESPONSE_TOKENS", "2048"))
@@ -93,6 +93,10 @@ class AppSettings:
     @property
     def api_providers_path(self) -> Path:
         return self.storage_dir / "api_providers.json"
+
+    @property
+    def app_settings_path(self) -> Path:
+        return self.storage_dir / "app_settings.json"
 
 
 settings = AppSettings()

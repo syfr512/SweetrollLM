@@ -1,6 +1,6 @@
 const DEFAULT_CHARACTER = {
   id: null,
-  name: "Aria",
+  name: "",
   description: "",
   personality: "",
   scenario: "",
@@ -8,6 +8,9 @@ const DEFAULT_CHARACTER = {
   first_message: "Welcome to SweetrollLM! Pull up a chair by the hearth and get comfortable. What kind of adventure or code are we cooking up today?",
   avatar_url: "",
   avatar_file: "",
+  chat_background_url: "",
+  chat_background_file: "",
+  chat_backdrop_enabled: true,
 };
 
 const DEFAULT_PERSONA = {
@@ -17,6 +20,47 @@ const DEFAULT_PERSONA = {
   avatar_url: "",
   avatar_file: "",
   is_default: false,
+};
+
+const CUSTOM_MODEL_VALUE = "__custom__";
+
+const CLOUD_MODEL_CATALOG = {
+  openrouter: [
+    "deepseek/deepseek-chat",
+    "deepseek/deepseek-r1",
+    "meta-llama/llama-3-70b-instruct",
+    "meta-llama/llama-3.1-8b-instruct",
+    "meta-llama/llama-3.1-70b-instruct",
+    "meta-llama/llama-3.2-3b-instruct:free",
+    "qwen/qwen-2.5-7b-instruct",
+    "qwen/qwen-2.5-32b-instruct",
+    "qwen/qwen-2.5-72b-instruct",
+    "qwen/qwen3-235b-a22b",
+    "mistralai/mistral-7b-instruct",
+    "mistralai/mistral-nemo",
+    "gryphe/mythomax-l2-13b",
+    "openai/gpt-4o-mini",
+    "openai/gpt-4.1-mini",
+  ],
+  openai: ["gpt-4o-mini", "gpt-4.1-mini", "gpt-4o", "o4-mini", "gpt-4.1"],
+  custom: ["koboldcpp", "llama3", "mistral", "qwen2.5"],
+};
+
+const VISION_MODEL_CATALOG = {
+  openrouter: [
+    "qwen/qwen-2.5-vl-72b-instruct",
+    "qwen/qwen-2.5-72b-instruct",
+    "qwen/qwen-2.5-vl-7b-instruct",
+    "openai/gpt-4o-mini",
+    "google/gemini-2.0-flash-001",
+    "anthropic/claude-3.5-sonnet",
+  ],
+  openai: ["gpt-4o-mini", "gpt-4o", "gpt-4.1-mini"],
+  google: ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"],
+  ollama: ["llava", "llava:13b", "qwen2.5vl:7b"],
+  llava: ["llava", "llava-v1.6", "bakllava"],
+  "qwen-vl": ["qwen2.5-vl-7b-instruct", "qwen2.5-vl-72b-instruct"],
+  custom: ["vision-model"],
 };
 
 const state = {
@@ -33,7 +77,7 @@ const state = {
   chatSessions: [],
   autoScrollObserver: null,
   characters: [],
-  activeCharacter: { ...DEFAULT_CHARACTER },
+  activeCharacter: null,
   editingCharacterId: null,
   lorebooks: [],
   activeLorebook: null,
@@ -47,6 +91,14 @@ const state = {
   apiProviders: [],
   activeApiProviderId: null,
   editingApiProviderId: null,
+  appSettings: {
+    global_background_path: "",
+    chat_bubble_opacity: 0.82,
+    background_image_opacity: 0.9,
+    updated_at: "",
+  },
+  appSettingsSaveTimer: null,
+  backgroundRevision: 0,
   localModels: [],
   downloadedModelNames: new Set(),
   lastHfRepoId: "",
@@ -61,6 +113,9 @@ const state = {
   setupWizardShown: false,
   setupStep: 1,
   lastDiagnosticKey: "",
+  setupSelectedModelPath: "",
+  validatedApiProviderKey: "",
+  pendingNewChat: false,
 };
 
 const el = {};
@@ -74,21 +129,25 @@ async function initializeApp() {
   bindEvents();
   applySavedTheme();
   pollStartupHealth();
-  setChatTransparency(el.chatTransparency.value);
+  setChatTransparency(el.chatTransparency.value, { persist: false });
+  setBackgroundImageOpacity(el.backgroundOpacitySlider.value, { persist: false });
   setSidebarCollapsed(loadSidebarPreference(), { persist: false });
+  renderCloudModelControl();
+  renderVisionModelControl();
+  loadExtensionConfig();
   updateInferenceVisibility();
   setCharacterEditor(DEFAULT_CHARACTER);
   setPersonaEditor(DEFAULT_PERSONA);
-  applyCharacter(DEFAULT_CHARACTER, { resetChat: false });
   await Promise.all([
     loadCharacters(),
     loadPersonas(),
     loadLorebooks(),
     loadApiProviders(),
+    loadAppSettings(),
     refreshHealth(),
     refreshModels(),
   ]);
-  resetChatToFirstMessage();
+  renderNoCharacterPlaceholder();
   installAutoScrollObserver();
   maybeShowSetupWizard();
 }
@@ -103,6 +162,14 @@ function cacheElements() {
     "toggleSidebar",
     "sourceBadge",
     "inferenceSource",
+    "sidebarLocalModelPanel",
+    "sidebarRefreshModels",
+    "sidebarLocalModelPath",
+    "sidebarLoadModel",
+    "sidebarUnloadModel",
+    "sidebarActiveModelDot",
+    "sidebarModelStatus",
+    "sidebarModelInlineError",
     "cloudPanel",
     "refreshModels",
     "localModelPath",
@@ -118,14 +185,21 @@ function cacheElements() {
     "apiProviderList",
     "apiProviderName",
     "apiProviderDefault",
+    "apiProviderFallback",
     "newApiProvider",
+    "testApiProvider",
     "saveApiProvider",
     "deleteApiProvider",
     "apiProviderStatus",
     "baseUrl",
+    "cloudModelSelect",
     "cloudModel",
     "apiKey",
     "appTheme",
+    "selectGlobalBackground",
+    "globalBgFileInput",
+    "clearGlobalBackground",
+    "globalBackgroundStatus",
     "temperature",
     "topP",
     "maxTokens",
@@ -133,22 +207,30 @@ function cacheElements() {
     "characterBackgrounds",
     "chatTransparency",
     "chatTransparencyValue",
+    "backgroundOpacitySlider",
+    "backgroundOpacityValue",
     "resetSetupWizard",
     "personaSelect",
     "openPersonaRegistry",
     "characterName",
     "characterAvatar",
     "characterAvatarPreview",
+    "sidebarCharacterList",
+    "chatHistoryShelf",
+    "toggleHistoryShelf",
+    "newChatSidebar",
     "systemPrompt",
     "activeLorebookDot",
     "activeLorebookStatus",
     "chatTitle",
     "chatSubtitle",
+    "chatMain",
     "chatBackdrop",
     "chatHistorySelect",
     "exportChat",
     "deleteChat",
     "clearChat",
+    "newChat",
     "openConsoleLogs",
     "closeConsoleLogs",
     "refreshConsoleLogs",
@@ -157,13 +239,17 @@ function cacheElements() {
     "setupStepBadge",
     "setupProviderSelect",
     "setupProviderType",
-    "setupCloudModel",
+    "setupCloudModelSelect",
+    "setupCustomModel",
     "setupApiKey",
+    "setupTestApi",
     "setupSaveApi",
     "setupSkipApi",
     "setupScanModels",
     "setupOpenMarketplace",
     "setupSkipModels",
+    "setupModelList",
+    "setupLoadModel",
     "setupModelStatus",
     "setupPersonaName",
     "setupPersonaBio",
@@ -189,12 +275,14 @@ function cacheElements() {
     "imageSteps",
     "imagePrompt",
     "imageNegativePrompt",
+    "saveImageConfig",
     "generateImage",
     "imageGenerationStatus",
-    "visionDropzone",
-    "visionImageInput",
     "visionEndpoint",
     "visionProvider",
+    "visionModelSelect",
+    "visionModel",
+    "saveVisionConfig",
     "visionAttachmentPreview",
     "visionCaptionStatus",
     "attachImage",
@@ -229,6 +317,9 @@ function cacheElements() {
     "characterEditorName",
     "characterEditorAvatarUrl",
     "characterAvatarFile",
+    "characterEditorBackdrop",
+    "characterEditorBackgroundUrl",
+    "characterBackgroundFile",
     "characterEditorDescription",
     "characterEditorPersonality",
     "characterEditorScenario",
@@ -237,6 +328,7 @@ function cacheElements() {
     "saveCharacter",
     "useCharacter",
     "exportCharacter",
+    "deleteCharacter",
     "characterSaveStatus",
     "closePersonaRegistry",
     "newPersona",
@@ -250,6 +342,7 @@ function cacheElements() {
     "personaDefault",
     "savePersona",
     "usePersona",
+    "deletePersona",
     "personaSaveStatus",
     "openLorebookEditor",
     "closeLorebookEditor",
@@ -261,6 +354,7 @@ function cacheElements() {
     "loreEntryList",
     "saveLorebook",
     "useLorebook",
+    "deleteLorebook",
     "lorebookSaveStatus",
   ].forEach((id) => {
     el[id] = document.getElementById(id);
@@ -272,18 +366,43 @@ function cacheElements() {
   el.characterModal = document.getElementById("character-modal");
   el.personaModal = document.getElementById("persona-modal");
   el.lorebookModal = document.getElementById("lorebook-modal");
+  el.newChatModal = document.getElementById("new-chat-modal");
+  el.confirmNewChat = document.getElementById("confirmNewChat");
+  el.cancelNewChat = document.getElementById("cancelNewChat");
+  el.cancelNewChatSecondary = document.getElementById("cancelNewChatSecondary");
 }
 
 function bindEvents() {
   el.inferenceSource.addEventListener("change", updateInferenceVisibility);
   el.cloudProvider.addEventListener("change", updateCloudDefaults);
+  el.cloudModelSelect.addEventListener("change", () => {
+    handleModelSelectChange(el.cloudModelSelect, el.cloudModel);
+    state.validatedApiProviderKey = "";
+  });
+  [el.baseUrl, el.cloudModel, el.apiKey, el.apiProviderName].forEach((field) => {
+    field.addEventListener("input", () => {
+      state.validatedApiProviderKey = "";
+    });
+  });
   el.apiProviderSelect.addEventListener("change", selectApiProvider);
   el.newApiProvider.addEventListener("click", newApiProviderDraft);
+  el.testApiProvider.addEventListener("click", testApiProvider);
   el.saveApiProvider.addEventListener("click", saveApiProvider);
   el.deleteApiProvider.addEventListener("click", deleteApiProvider);
   el.refreshModels.addEventListener("click", refreshModels);
   el.loadModel.addEventListener("click", loadModel);
   el.unloadModel.addEventListener("click", unloadModel);
+  el.sidebarRefreshModels.addEventListener("click", refreshModels);
+  el.sidebarLoadModel.addEventListener("click", () => loadModelFromSidebar());
+  el.sidebarUnloadModel.addEventListener("click", unloadModel);
+  el.sidebarLocalModelPath.addEventListener("change", () => {
+    el.localModelPath.value = el.sidebarLocalModelPath.value;
+    setSidebarModelError("");
+  });
+  el.localModelPath.addEventListener("change", () => {
+    el.sidebarLocalModelPath.value = el.localModelPath.value;
+    setSidebarModelError("");
+  });
   el.toggleSidebar.addEventListener("click", () => {
     setSidebarCollapsed(!state.sidebarCollapsed);
   });
@@ -299,9 +418,15 @@ function bindEvents() {
     closeModal(el.modelDiagnosticModal);
     openModelMarket();
   });
+  el.setupTestApi.addEventListener("click", setupTestApi);
   el.setupSaveApi.addEventListener("click", setupSaveApi);
   el.setupSkipApi.addEventListener("click", () => showSetupStep(2));
+  el.setupProviderType.addEventListener("change", renderSetupCloudModelControl);
+  el.setupCloudModelSelect.addEventListener("change", () =>
+    handleModelSelectChange(el.setupCloudModelSelect, el.setupCustomModel)
+  );
   el.setupScanModels.addEventListener("click", setupScanModels);
+  el.setupLoadModel.addEventListener("click", setupLoadSelectedModel);
   el.setupOpenMarketplace.addEventListener("click", () => {
     openModelMarket();
     setupModelStatus("Marketplace opened. Download or select a GGUF, then return here.");
@@ -323,7 +448,7 @@ function bindEvents() {
   el.openLorebookEditor.addEventListener("click", openLorebookEditor);
   el.closeLorebookEditor.addEventListener("click", () => closeModal(el.lorebookModal));
 
-  [el.modelMarketModal, el.consoleLogsModal, el.modelDiagnosticModal, el.characterModal, el.personaModal, el.lorebookModal].forEach((modal) => {
+  [el.modelMarketModal, el.consoleLogsModal, el.modelDiagnosticModal, el.characterModal, el.personaModal, el.lorebookModal, el.newChatModal].forEach((modal) => {
     modal.addEventListener("click", (event) => {
       if (event.target === modal) {
         closeModal(modal);
@@ -344,16 +469,41 @@ function bindEvents() {
   el.importCharacterFile.addEventListener("change", importCharacterFile);
   el.newCharacter.addEventListener("click", () => setCharacterEditor(DEFAULT_CHARACTER));
   el.saveCharacter.addEventListener("click", saveCharacterCard);
-  el.useCharacter.addEventListener("click", () => applyCharacter(editorCharacterPayload()));
+  el.useCharacter.addEventListener("click", async () => {
+    await applyCharacter(editorCharacterPayload());
+    closeModal(el.characterModal);
+  });
   el.exportCharacter.addEventListener("click", exportCharacterCard);
+  el.deleteCharacter.addEventListener("click", deleteCharacterCard);
   el.characterEditorName.addEventListener("input", updateCharacterEditorAvatar);
   el.characterEditorAvatarUrl.addEventListener("input", updateCharacterEditorAvatar);
+  el.characterEditorBackgroundUrl.addEventListener("input", () => {
+    if (state.activeCharacter?.id && state.activeCharacter.id === state.editingCharacterId) {
+      const value = el.characterEditorBackgroundUrl.value.trim();
+      if (value.startsWith("/api/assets/")) {
+        state.activeCharacter.chat_background_file = value;
+        state.activeCharacter.chat_background_url = "";
+      } else {
+        state.activeCharacter.chat_background_url = value;
+        state.activeCharacter.chat_background_file = "";
+      }
+      updateChatBackground();
+    }
+  });
+  el.characterEditorBackdrop.addEventListener("change", () => {
+    if (state.activeCharacter?.id && state.activeCharacter.id === state.editingCharacterId) {
+      state.activeCharacter.chat_backdrop_enabled = el.characterEditorBackdrop.checked;
+      updateChatBackground();
+    }
+  });
   el.characterAvatarFile.addEventListener("change", handleCharacterAvatarFile);
+  el.characterBackgroundFile.addEventListener("change", handleCharacterBackgroundFile);
 
   el.personaSelect.addEventListener("change", selectPersona);
   el.newPersona.addEventListener("click", () => setPersonaEditor(DEFAULT_PERSONA));
   el.savePersona.addEventListener("click", savePersonaCard);
   el.usePersona.addEventListener("click", () => applyPersona(editorPersonaPayload()));
+  el.deletePersona.addEventListener("click", deletePersonaCard);
   el.personaEditorName.addEventListener("input", updatePersonaEditorAvatar);
   el.personaEditorAvatarUrl.addEventListener("input", updatePersonaEditorAvatar);
   el.personaAvatarFile.addEventListener("change", handlePersonaAvatarFile);
@@ -362,6 +512,7 @@ function bindEvents() {
   el.addLoreEntry.addEventListener("click", () => addLoreEntryRow());
   el.saveLorebook.addEventListener("click", saveLorebook);
   el.useLorebook.addEventListener("click", useLorebookFromEditor);
+  el.deleteLorebook.addEventListener("click", deleteLorebookCard);
   el.lorebookActive.addEventListener("change", () => {
     state.lorebookEnabled = el.lorebookActive.checked;
     if (state.activeLorebook && state.editingLorebookId === state.activeLorebook.id) {
@@ -374,38 +525,50 @@ function bindEvents() {
   el.characterAvatar.addEventListener("input", updateCharacterPreview);
   el.characterBackgrounds.addEventListener("change", updateChatBackground);
   el.appTheme.addEventListener("change", () => setAppTheme(el.appTheme.value));
+  el.selectGlobalBackground.addEventListener("click", selectGlobalBackground);
+  el.globalBgFileInput.addEventListener("change", handleGlobalBackgroundFile);
+  el.clearGlobalBackground.addEventListener("click", clearGlobalBackground);
   el.resetSetupWizard.addEventListener("click", () => {
     window.localStorage.removeItem("sweetroll_setup_complete");
     state.setupWizardShown = false;
     showSetupWizard();
   });
-  el.chatTransparency.addEventListener("input", () => {
-    setChatTransparency(el.chatTransparency.value);
+  el.chatTransparency.addEventListener("input", function () {
+    const alphaValue = parseChatTransparencyValue(this.value);
+    document.documentElement.style.setProperty(
+      "--chat-bubble-opacity",
+      alphaValue.toFixed(2)
+    );
+    setChatTransparency(alphaValue, { cssAlreadyApplied: true });
+  });
+  el.backgroundOpacitySlider.addEventListener("input", () => {
+    setBackgroundImageOpacity(el.backgroundOpacitySlider.value);
   });
   el.clearChat.addEventListener("click", clearChat);
   el.exportChat.addEventListener("click", exportChatLogs);
   el.deleteChat.addEventListener("click", deleteActiveChat);
+  el.newChat.addEventListener("click", startNewChat);
+  el.newChatSidebar.addEventListener("click", startNewChat);
+  el.toggleHistoryShelf.addEventListener("click", toggleHistoryShelf);
+  el.confirmNewChat.addEventListener("click", confirmStartNewChat);
+  el.cancelNewChat.addEventListener("click", cancelStartNewChat);
+  el.cancelNewChatSecondary.addEventListener("click", cancelStartNewChat);
   el.deleteSelectedMessages.addEventListener("click", deleteSelectedMessages);
   el.chatHistorySelect.addEventListener("change", loadSelectedChat);
   el.toggleExtensions.addEventListener("click", toggleExtensionsDrawer);
+  el.saveImageConfig.addEventListener("click", saveImageExtensionConfig);
   el.generateImage.addEventListener("click", generateImageFromExtension);
+  el.saveVisionConfig.addEventListener("click", saveVisionExtensionConfig);
+  el.visionProvider.addEventListener("change", renderVisionModelControl);
+  el.visionModelSelect.addEventListener("change", () =>
+    handleModelSelectChange(el.visionModelSelect, el.visionModel)
+  );
   el.attachImage.addEventListener("click", () => el.chatImageInput.click());
   el.chatImageInput.addEventListener("change", (event) => {
     handleImageAttachment(event.target.files?.[0]);
     event.target.value = "";
   });
-  el.visionDropzone.addEventListener("click", () => el.visionImageInput.click());
-  el.visionDropzone.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      el.visionImageInput.click();
-    }
-  });
-  el.visionImageInput.addEventListener("change", (event) => {
-    handleImageAttachment(event.target.files?.[0]);
-    event.target.value = "";
-  });
-  [el.chatForm, el.visionDropzone].forEach((dropTarget) => {
+  [el.chatForm].forEach((dropTarget) => {
     dropTarget.addEventListener("dragover", (event) => {
       event.preventDefault();
       dropTarget.classList.add("drag-over");
@@ -460,10 +623,65 @@ function setSidebarCollapsed(collapsed, options = {}) {
   window.setTimeout(scrollChatToBottom, 240);
 }
 
-function setChatTransparency(value) {
-  const numeric = Math.max(0.1, Math.min(1, Number(value) || 0.82));
-  document.documentElement.style.setProperty("--chat-bubble-opacity", numeric.toFixed(2));
+function setChatTransparency(value, options = {}) {
+  const numeric = parseChatTransparencyValue(value);
+  if (options.cssAlreadyApplied !== true) {
+    document.documentElement.style.setProperty("--chat-bubble-opacity", numeric.toFixed(2));
+  }
+  el.chatTransparency.value = String(Math.round(numeric * 100));
   el.chatTransparencyValue.textContent = `${Math.round(numeric * 100)}%`;
+  state.appSettings.chat_bubble_opacity = numeric;
+  applyChatBubbleOpacityToDom(numeric);
+  if (options.persist !== false) {
+    scheduleAppSettingsSave();
+  }
+}
+
+function parseChatTransparencyValue(value) {
+  const raw = Number(value);
+  const normalized = raw > 1 ? raw / 100 : raw;
+  return Math.max(0.1, Math.min(1, Number.isFinite(normalized) ? normalized : 0.82));
+}
+
+function applyChatBubbleOpacityToDom(value = state.appSettings.chat_bubble_opacity) {
+  const alpha = parseChatTransparencyValue(value);
+  const styleSource = el.chatMain || document.documentElement;
+  const styles = window.getComputedStyle(styleSource);
+  const assistantRgb =
+    normalizeRgbChannels(styles.getPropertyValue("--surface-color-rgb")) || "20, 20, 26";
+  const userRgb =
+    normalizeRgbChannels(styles.getPropertyValue("--user-surface-color-rgb")) || "28, 32, 40";
+  document.querySelectorAll(".bubble, .message-bubble, .chat-message-card").forEach((bubble) => {
+    const rgb = bubble.closest(".message-row.user") ? userRgb : assistantRgb;
+    const color = `rgba(${rgb}, ${alpha.toFixed(2)})`;
+    bubble.style.setProperty("--chat-bubble-opacity", alpha.toFixed(2));
+    bubble.style.setProperty("background", color, "important");
+    bubble.style.setProperty("background-color", color, "important");
+  });
+}
+
+function normalizeRgbChannels(value) {
+  const parts = String(value || "")
+    .split(",")
+    .map((part) => Number(part.trim()))
+    .filter((part) => Number.isFinite(part));
+  if (parts.length !== 3) {
+    return "";
+  }
+  return parts.map((part) => Math.max(0, Math.min(255, Math.round(part)))).join(", ");
+}
+
+function setBackgroundImageOpacity(value, options = {}) {
+  const raw = Number(value);
+  const normalized = raw > 1 ? raw / 100 : raw;
+  const numeric = Math.max(0, Math.min(1, Number.isFinite(normalized) ? normalized : 0.9));
+  document.documentElement.style.setProperty("--bg-image-opacity", numeric.toFixed(2));
+  el.backgroundOpacitySlider.value = String(Math.round(numeric * 100));
+  el.backgroundOpacityValue.textContent = `${Math.round(numeric * 100)}%`;
+  state.appSettings.background_image_opacity = numeric;
+  if (options.persist !== false) {
+    scheduleAppSettingsSave();
+  }
 }
 
 function applySavedTheme() {
@@ -491,6 +709,168 @@ function setAppTheme(theme, options = {}) {
       // Theme is already applied; storage is only for the next launch.
     }
   }
+  updateChatBackground();
+}
+
+async function loadAppSettings() {
+  try {
+    const response = await fetch("/api/app-settings");
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.detail || "Could not load app settings");
+    }
+    state.appSettings = normalizeAppSettings(data);
+  } catch (error) {
+    state.appSettings = normalizeAppSettings({});
+    console.warn(error.message || "Could not load app settings.");
+  }
+  applyAppSettingsVisuals();
+  renderGlobalBackgroundStatus();
+  updateChatBackground();
+}
+
+function normalizeAppSettings(settingsPayload) {
+  return {
+    global_background_path: settingsPayload?.global_background_path || "",
+    chat_bubble_opacity: normalizeOpacity(settingsPayload?.chat_bubble_opacity, 0.82, 0.1),
+    background_image_opacity: normalizeOpacity(settingsPayload?.background_image_opacity, 0.9, 0),
+    updated_at: settingsPayload?.updated_at || "",
+  };
+}
+
+function normalizeOpacity(value, fallback, minimum) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return fallback;
+  }
+  return Math.max(minimum, Math.min(1, numeric));
+}
+
+function applyAppSettingsVisuals() {
+  setChatTransparency(state.appSettings.chat_bubble_opacity, { persist: false });
+  setBackgroundImageOpacity(state.appSettings.background_image_opacity, { persist: false });
+}
+
+function scheduleAppSettingsSave() {
+  window.clearTimeout(state.appSettingsSaveTimer);
+  state.appSettingsSaveTimer = window.setTimeout(saveAppSettings, 450);
+}
+
+async function flushAppSettingsSave() {
+  if (!state.appSettingsSaveTimer) {
+    return;
+  }
+  window.clearTimeout(state.appSettingsSaveTimer);
+  state.appSettingsSaveTimer = null;
+  await saveAppSettings();
+}
+
+async function saveAppSettings() {
+  state.appSettingsSaveTimer = null;
+  try {
+    const response = await fetch("/api/app-settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        global_background_path: state.appSettings.global_background_path || "",
+        chat_bubble_opacity: state.appSettings.chat_bubble_opacity,
+        background_image_opacity: state.appSettings.background_image_opacity,
+      }),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.detail || "Could not save appearance settings");
+    }
+    state.appSettings = normalizeAppSettings(payload);
+    renderGlobalBackgroundStatus();
+  } catch (error) {
+    console.warn(error.message || "Could not save appearance settings.");
+  }
+}
+
+function selectGlobalBackground() {
+  el.globalBgFileInput.value = "";
+  el.globalBgFileInput.click();
+}
+
+async function handleGlobalBackgroundFile() {
+  const file = el.globalBgFileInput.files?.[0];
+  if (!file) {
+    return;
+  }
+  if (!file.type.startsWith("image/")) {
+    renderGlobalBackgroundStatus("Select an image file for the global background.");
+    el.globalBgFileInput.value = "";
+    return;
+  }
+  el.selectGlobalBackground.disabled = true;
+  renderGlobalBackgroundStatus(`Uploading ${file.name}.`);
+  try {
+    await flushAppSettingsSave();
+    const form = new FormData();
+    form.append("background", file, file.name);
+    const response = await fetch("/api/app-settings/background/upload", {
+      method: "POST",
+      body: form,
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.detail || "Could not upload background");
+    }
+    state.appSettings = normalizeAppSettings(payload.settings);
+    state.backgroundRevision += 1;
+    applyAppSettingsVisuals();
+    renderGlobalBackgroundStatus(payload.message || "Global background updated.");
+    updateChatBackground();
+  } catch (error) {
+    renderGlobalBackgroundStatus(error.message || "Could not upload background.");
+  } finally {
+    el.selectGlobalBackground.disabled = false;
+    el.globalBgFileInput.value = "";
+  }
+}
+
+async function clearGlobalBackground() {
+  el.clearGlobalBackground.disabled = true;
+  try {
+    await flushAppSettingsSave();
+    const response = await fetch("/api/app-settings/background/clear", { method: "POST" });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.detail || "Could not clear background");
+    }
+    state.appSettings = normalizeAppSettings(payload);
+    state.backgroundRevision += 1;
+    applyAppSettingsVisuals();
+    renderGlobalBackgroundStatus("Global background cleared.");
+    updateChatBackground();
+  } catch (error) {
+    renderGlobalBackgroundStatus(error.message || "Could not clear background.");
+  } finally {
+    el.clearGlobalBackground.disabled = false;
+  }
+}
+
+function renderGlobalBackgroundStatus(message = "") {
+  if (!el.globalBackgroundStatus) {
+    return;
+  }
+  if (message) {
+    el.globalBackgroundStatus.textContent = message;
+    return;
+  }
+  const path = state.appSettings?.global_background_path || "";
+  el.globalBackgroundStatus.textContent = path
+    ? `Using ${shortenPath(path)}`
+    : "Theme default active.";
+}
+
+function shortenPath(pathValue) {
+  const text = String(pathValue || "");
+  if (text.length <= 58) {
+    return text;
+  }
+  return `...${text.slice(-55)}`;
 }
 
 function toggleExtensionsDrawer() {
@@ -499,6 +879,80 @@ function toggleExtensionsDrawer() {
   el.toggleExtensions.setAttribute("aria-expanded", String(state.extensionsOpen));
   el.toggleExtensions.classList.toggle("is-active", state.extensionsOpen);
   window.setTimeout(scrollChatToBottom, 180);
+}
+
+function loadExtensionConfig() {
+  try {
+    const raw = window.localStorage.getItem("sweetroll_lm_extension_config");
+    if (!raw) {
+      return;
+    }
+    const config = JSON.parse(raw);
+    if (config.image) {
+      el.imageProvider.value = config.image.provider || el.imageProvider.value;
+      el.imageEndpoint.value = config.image.endpoint || "";
+      el.imageModel.value = config.image.model || "";
+      el.imageAspectRatio.value = config.image.aspect_ratio || el.imageAspectRatio.value;
+      el.imageSteps.value = config.image.steps || el.imageSteps.value;
+      el.imageNegativePrompt.value = config.image.negative_prompt || "";
+    }
+    if (config.vision) {
+      el.visionProvider.value = config.vision.provider || el.visionProvider.value;
+      el.visionEndpoint.value = config.vision.endpoint || "";
+      renderVisionModelControl(config.vision.model || "");
+    }
+  } catch {
+    // Optional local preference; malformed storage should never block chat.
+  }
+}
+
+function saveImageExtensionConfig() {
+  writeExtensionConfig({
+    image: {
+      provider: el.imageProvider.value,
+      endpoint: el.imageEndpoint.value.trim(),
+      model: el.imageModel.value.trim(),
+      aspect_ratio: el.imageAspectRatio.value,
+      steps: Number(el.imageSteps.value) || 24,
+      negative_prompt: el.imageNegativePrompt.value.trim(),
+    },
+  });
+  el.imageGenerationStatus.textContent = "Image generation configuration saved.";
+}
+
+function saveVisionExtensionConfig() {
+  writeExtensionConfig({
+    vision: {
+      provider: el.visionProvider.value,
+      endpoint: el.visionEndpoint.value.trim(),
+      model: selectedModelValue(el.visionModelSelect, el.visionModel),
+    },
+  });
+  el.visionCaptionStatus.textContent = "Vision captioning configuration saved.";
+}
+
+function writeExtensionConfig(partial) {
+  try {
+    const current = JSON.parse(
+      window.localStorage.getItem("sweetroll_lm_extension_config") || "{}"
+    );
+    window.localStorage.setItem(
+      "sweetroll_lm_extension_config",
+      JSON.stringify({ ...current, ...partial })
+    );
+  } catch {
+    // The live controls still work if browser storage is unavailable.
+  }
+}
+
+function renderVisionModelControl(currentValue = "") {
+  populateModelSelector(
+    el.visionModelSelect,
+    el.visionModel,
+    el.visionProvider?.value || "custom",
+    currentValue || selectedModelValue(el.visionModelSelect, el.visionModel),
+    VISION_MODEL_CATALOG
+  );
 }
 
 function openModelMarket() {
@@ -536,7 +990,7 @@ function closeModal(modal) {
 }
 
 function closeAllModals() {
-  [el.modelMarketModal, el.consoleLogsModal, el.modelDiagnosticModal, el.characterModal, el.personaModal, el.lorebookModal].forEach(closeModal);
+  [el.modelMarketModal, el.consoleLogsModal, el.modelDiagnosticModal, el.characterModal, el.personaModal, el.lorebookModal, el.newChatModal].forEach(closeModal);
 }
 
 async function pollStartupHealth() {
@@ -627,6 +1081,8 @@ function maybeShowSetupWizard() {
 function showSetupWizard() {
   state.setupWizardShown = true;
   renderSetupProviderOptions();
+  renderSetupCloudModelControl();
+  renderSetupModelList(state.localModels);
   showSetupStep(1);
   openModal(el.setupWizardModal, el.setupProviderSelect);
 }
@@ -639,6 +1095,66 @@ function renderSetupProviderOptions() {
     option.textContent = provider.name;
     el.setupProviderSelect.appendChild(option);
   });
+}
+
+function catalogForProvider(provider, catalog = CLOUD_MODEL_CATALOG) {
+  return catalog[provider] || catalog.custom || [];
+}
+
+function populateModelSelector(select, input, provider, currentValue = "", catalog = CLOUD_MODEL_CATALOG) {
+  const models = catalogForProvider(provider, catalog);
+  const normalizedCurrent = String(currentValue || "").trim();
+  select.innerHTML = "";
+
+  const customOption = document.createElement("option");
+  customOption.value = CUSTOM_MODEL_VALUE;
+  customOption.textContent = "Custom Input...";
+  select.appendChild(customOption);
+
+  models.forEach((model) => {
+    const option = document.createElement("option");
+    option.value = model;
+    option.textContent = model;
+    select.appendChild(option);
+  });
+
+  const shouldUseCustom =
+    provider === "custom" ||
+    (normalizedCurrent && !models.includes(normalizedCurrent));
+  select.value = shouldUseCustom ? CUSTOM_MODEL_VALUE : normalizedCurrent || models[0] || CUSTOM_MODEL_VALUE;
+  input.classList.toggle("hidden", select.value !== CUSTOM_MODEL_VALUE);
+  if (select.value === CUSTOM_MODEL_VALUE) {
+    input.value = normalizedCurrent && !models.includes(normalizedCurrent) ? normalizedCurrent : "";
+  } else {
+    input.value = select.value;
+  }
+}
+
+function handleModelSelectChange(select, input) {
+  const custom = select.value === CUSTOM_MODEL_VALUE;
+  input.classList.toggle("hidden", !custom);
+  if (!custom) {
+    input.value = select.value;
+  } else {
+    input.focus();
+  }
+}
+
+function selectedModelValue(select, input) {
+  if (select.value === CUSTOM_MODEL_VALUE) {
+    return input.value.trim();
+  }
+  return select.value || input.value.trim();
+}
+
+function renderSetupCloudModelControl() {
+  const provider = el.setupProviderType.value;
+  populateModelSelector(
+    el.setupCloudModelSelect,
+    el.setupCustomModel,
+    provider,
+    el.setupCustomModel.value.trim()
+  );
 }
 
 function showSetupStep(step) {
@@ -655,6 +1171,42 @@ function showSetupStep(step) {
   el.setupFinish.classList.toggle("hidden", state.setupStep !== 3);
 }
 
+function setupApiProviderPayload() {
+  const providerType = el.setupProviderType.value;
+  const baseUrl =
+    providerType === "openai"
+      ? "https://api.openai.com/v1"
+      : providerType === "openrouter"
+        ? "https://openrouter.ai/api/v1"
+        : el.baseUrl.value.trim() || "http://127.0.0.1:11434/v1";
+  return {
+    name: "First Cloud Profile",
+    base_url: baseUrl,
+    api_key: el.setupApiKey.value.trim(),
+    default_model: setupSelectedCloudModel(),
+    is_default: true,
+    is_fallback: false,
+  };
+}
+
+async function setupTestApi() {
+  const payload = setupApiProviderPayload();
+  if (!payload.api_key && payload.base_url.includes("api.openai.com")) {
+    setupModelStatus("OpenAI validation requires an API key.");
+    return;
+  }
+  el.setupTestApi.disabled = true;
+  setupModelStatus("Testing API connection...");
+  try {
+    const result = await validateApiProviderPayload(payload);
+    setupModelStatus(result.message || "API connection validated.");
+  } catch (error) {
+    setupModelStatus(error.message || "API connection failed.");
+  } finally {
+    el.setupTestApi.disabled = false;
+  }
+}
+
 async function setupSaveApi() {
   const selectedProvider = el.setupProviderSelect.value;
   if (selectedProvider) {
@@ -665,30 +1217,19 @@ async function setupSaveApi() {
     return;
   }
 
-  const apiKey = el.setupApiKey.value.trim();
-  if (!apiKey) {
+  const setupPayload = setupApiProviderPayload();
+  if (!setupPayload.api_key && !setupPayload.base_url.includes("127.0.0.1")) {
     showSetupStep(2);
     return;
   }
 
-  const providerType = el.setupProviderType.value;
-  const baseUrl =
-    providerType === "openai"
-      ? "https://api.openai.com/v1"
-      : providerType === "openrouter"
-        ? "https://openrouter.ai/api/v1"
-        : el.baseUrl.value;
   try {
+    const testResult = await validateApiProviderPayload(setupPayload);
+    setupModelStatus(testResult.message || "API profile validated.");
     const response = await fetch("/api/api-providers", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: "First Cloud Profile",
-        base_url: baseUrl,
-        api_key: apiKey,
-        default_model: el.setupCloudModel.value.trim() || "gpt-4o-mini",
-        is_default: true,
-      }),
+      body: JSON.stringify(setupPayload),
     });
     const payload = await response.json();
     if (!response.ok) {
@@ -704,12 +1245,85 @@ async function setupSaveApi() {
 }
 
 async function setupScanModels() {
-  setupModelStatus("Scanning local GGUF storage...");
+  setupModelStatus("Opening local GGUF picker...");
+  try {
+    const response = await fetch("/api/models/import-local", { method: "POST" });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.detail || "Could not import local model");
+    }
+    state.localModels = payload.models || [];
+    state.downloadedModelNames = modelNameSet(state.localModels);
+    renderSetupModelList(state.localModels);
+    setupModelStatus(payload.message || "Local models scanned.");
+    await refreshModels();
+    return;
+  } catch (error) {
+    setupModelStatus(`${error.message}. Showing scanned storage models instead.`);
+  }
   await refreshModels();
+  renderSetupModelList(state.localModels);
   const count = state.localModels.length;
   setupModelStatus(
     count ? `Found ${count} local GGUF model${count === 1 ? "" : "s"}.` : "No GGUF models found yet."
   );
+}
+
+function setupSelectedCloudModel() {
+  return selectedModelValue(el.setupCloudModelSelect, el.setupCustomModel);
+}
+
+function renderSetupModelList(models) {
+  el.setupModelList.innerHTML = "";
+  if (!models?.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty-state compact-empty";
+    empty.textContent = "No local GGUF files found in storage/models/.";
+    el.setupModelList.appendChild(empty);
+    state.setupSelectedModelPath = "";
+    return;
+  }
+
+  models.forEach((model, index) => {
+    const label = document.createElement("label");
+    label.className = "setup-model-option";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.value = model.path || model;
+    input.checked = index === 0 && !state.setupSelectedModelPath;
+    if (input.checked) {
+      state.setupSelectedModelPath = input.value;
+    }
+    input.addEventListener("change", () => {
+      el.setupModelList.querySelectorAll("input").forEach((item) => {
+        if (item !== input) {
+          item.checked = false;
+        }
+      });
+      state.setupSelectedModelPath = input.checked ? input.value : "";
+    });
+    const copy = document.createElement("span");
+    copy.textContent = model.relative_path
+      ? `${model.relative_path} (${formatBytes(model.size_bytes)})`
+      : String(model);
+    label.append(input, copy);
+    el.setupModelList.appendChild(label);
+  });
+}
+
+async function setupLoadSelectedModel() {
+  const selected =
+    state.setupSelectedModelPath ||
+    el.setupModelList.querySelector("input:checked")?.value ||
+    "";
+  if (!selected) {
+    setupModelStatus("Select a scanned GGUF model first.");
+    return;
+  }
+  el.localModelPath.value = selected;
+  setupModelStatus("Loading selected model...");
+  await loadModel();
+  setupModelStatus("Load request completed. Check the Local Manager status.");
 }
 
 async function setupCreatePersona() {
@@ -756,6 +1370,7 @@ function finishSetupWizard() {
 
 function updateInferenceVisibility() {
   const localMode = el.inferenceSource.value === "local";
+  el.sidebarLocalModelPanel.classList.toggle("hidden", !localMode);
   el.cloudPanel.classList.toggle("hidden", localMode);
   setCloudFieldsEnabled(!localMode);
   el.sourceBadge.textContent = localMode ? "Local" : "Cloud";
@@ -775,15 +1390,23 @@ function setCloudFieldsEnabled(enabled) {
 function updateCloudDefaults() {
   if (el.cloudProvider.value === "openrouter") {
     el.baseUrl.value = "https://openrouter.ai/api/v1";
-    if (!el.cloudModel.value || el.cloudModel.value === "gpt-4o-mini") {
-      el.cloudModel.value = "openai/gpt-4o-mini";
-    }
   } else if (el.cloudProvider.value === "openai") {
     el.baseUrl.value = "https://api.openai.com/v1";
-    if (!el.cloudModel.value || el.cloudModel.value === "openai/gpt-4o-mini") {
-      el.cloudModel.value = "gpt-4o-mini";
-    }
+  } else if (!el.baseUrl.value.trim()) {
+    el.baseUrl.value = "http://127.0.0.1:11434/v1";
   }
+  renderCloudModelControl();
+  state.validatedApiProviderKey = "";
+}
+
+function renderCloudModelControl(currentValue = "") {
+  const provider = el.cloudProvider?.value || "openai";
+  populateModelSelector(
+    el.cloudModelSelect,
+    el.cloudModel,
+    provider,
+    currentValue || selectedModelValue(el.cloudModelSelect, el.cloudModel)
+  );
 }
 
 async function loadApiProviders() {
@@ -860,7 +1483,13 @@ function renderApiProviderList() {
     name.textContent = provider.name;
     const meta = document.createElement("span");
     meta.className = "provider-meta";
-    meta.textContent = `${provider.default_model} - ${provider.base_url}`;
+    const badges = [
+      provider.is_default ? "Default" : "",
+      provider.is_fallback ? "Fallback" : "",
+    ].filter(Boolean);
+    meta.textContent = `${provider.default_model} - ${provider.base_url}${
+      badges.length ? ` - ${badges.join(" / ")}` : ""
+    }`;
     copy.append(name, meta);
 
     const setDefault = document.createElement("button");
@@ -907,11 +1536,13 @@ function newApiProviderDraft() {
   state.editingApiProviderId = null;
   el.apiProviderSelect.value = "";
   el.apiProviderName.value = "New Provider";
-  el.cloudProvider.value = "custom";
-  el.baseUrl.value = "http://127.0.0.1:11434/v1";
-  el.cloudModel.value = "local-model";
+  el.cloudProvider.value = "openrouter";
+  el.baseUrl.value = "https://openrouter.ai/api/v1";
+  renderCloudModelControl("deepseek/deepseek-chat");
   el.apiKey.value = "";
   el.apiProviderDefault.checked = !state.apiProviders.length;
+  el.apiProviderFallback.checked = false;
+  state.validatedApiProviderKey = "";
   setApiProviderStatus("New provider draft.");
 }
 
@@ -920,27 +1551,43 @@ function setApiProviderEditor(provider) {
   el.apiProviderName.value = provider.name;
   el.cloudProvider.value = inferCloudProvider(provider.base_url);
   el.baseUrl.value = provider.base_url;
-  el.cloudModel.value = provider.default_model;
+  renderCloudModelControl(provider.default_model);
   el.apiKey.value = provider.api_key || "";
   el.apiProviderDefault.checked = Boolean(provider.is_default);
+  el.apiProviderFallback.checked = Boolean(provider.is_fallback);
+  state.validatedApiProviderKey = "";
 }
 
 function apiProviderPayload() {
+  const model = selectedModelValue(el.cloudModelSelect, el.cloudModel).trim();
+  const editingProvider = state.apiProviders.find(
+    (provider) => provider.id === state.editingApiProviderId
+  );
+  const requestedName = el.apiProviderName.value.trim() || "API Provider";
+  const shouldCreateNewSlot =
+    editingProvider &&
+    editingProvider.name.trim().toLowerCase() !== requestedName.toLowerCase();
   return {
-    id: state.editingApiProviderId,
-    name: el.apiProviderName.value.trim() || "API Provider",
+    id: shouldCreateNewSlot ? null : state.editingApiProviderId,
+    name: requestedName,
     base_url: el.baseUrl.value.trim(),
     api_key: el.apiKey.value.trim(),
-    default_model: el.cloudModel.value.trim() || "local-model",
+    default_model: model,
     is_default: el.apiProviderDefault.checked,
+    is_fallback: el.apiProviderFallback.checked,
   };
 }
 
 async function saveApiProvider() {
   const payload = apiProviderPayload();
+  if (!payload.default_model) {
+    setApiProviderStatus("Select a model or use Custom Input before saving.");
+    return;
+  }
   el.saveApiProvider.disabled = true;
-  setApiProviderStatus("Saving provider.");
+  setApiProviderStatus("Testing provider before save.");
   try {
+    await validateApiProviderPayload(payload);
     const response = await fetch("/api/api-providers", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -959,6 +1606,50 @@ async function saveApiProvider() {
   } finally {
     el.saveApiProvider.disabled = false;
   }
+}
+
+async function testApiProvider() {
+  const payload = apiProviderPayload();
+  if (!payload.default_model) {
+    setApiProviderStatus("Select a model or use Custom Input before testing.");
+    return;
+  }
+  el.testApiProvider.disabled = true;
+  setApiProviderStatus("Testing API connection.");
+  try {
+    const result = await validateApiProviderPayload(payload);
+    setApiProviderStatus(result.message || "Connection validated.");
+  } catch (error) {
+    setApiProviderStatus(error.message || "Connection test failed.");
+  } finally {
+    el.testApiProvider.disabled = false;
+  }
+}
+
+async function validateApiProviderPayload(payload) {
+  const key = apiProviderValidationKey(payload);
+  if (state.validatedApiProviderKey === key) {
+    return { ok: true, message: "Connection already validated for these fields." };
+  }
+  const response = await fetch("/api/api-providers/test", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || !result.ok) {
+    throw new Error(result.message || result.detail || "Connection validation failed.");
+  }
+  state.validatedApiProviderKey = key;
+  return result;
+}
+
+function apiProviderValidationKey(payload) {
+  return [
+    payload.base_url,
+    payload.default_model,
+    payload.api_key ? "keyed" : "no-key",
+  ].join("|");
 }
 
 async function deleteApiProvider() {
@@ -995,6 +1686,7 @@ async function setDefaultApiProvider(provider) {
     api_key: provider.api_key || "",
     default_model: provider.default_model,
     is_default: true,
+    is_fallback: Boolean(provider.is_fallback),
   };
   try {
     const response = await fetch("/api/api-providers", {
@@ -1024,8 +1716,10 @@ function applyActiveApiProviderToFields() {
 function applyApiProviderToFields(provider) {
   el.cloudProvider.value = inferCloudProvider(provider.base_url);
   el.baseUrl.value = provider.base_url;
-  el.cloudModel.value = provider.default_model;
+  renderCloudModelControl(provider.default_model);
   el.apiKey.value = provider.api_key || "";
+  el.apiProviderDefault.checked = Boolean(provider.is_default);
+  el.apiProviderFallback.checked = Boolean(provider.is_fallback);
 }
 
 function activeApiProvider() {
@@ -1067,34 +1761,22 @@ async function refreshHealth() {
 async function refreshModels() {
   setModelStatus("Scanning models", false);
   const previousSelection = el.localModelPath.value;
+  const previousSidebarSelection = el.sidebarLocalModelPath.value;
   try {
     const response = await fetch("/api/models/local");
     const data = await response.json();
     const models = data.models || [];
     state.localModels = models;
     state.downloadedModelNames = modelNameSet(models);
-    el.localModelPath.innerHTML = "";
-
-    if (!models.length) {
-      const option = document.createElement("option");
-      option.value = "";
-      option.textContent = "No GGUF files found";
-      el.localModelPath.appendChild(option);
-    } else {
-      models.forEach((model) => {
-        const option = document.createElement("option");
-        option.value = model.path || model;
-        option.textContent = model.relative_path
-          ? `${model.relative_path} (${formatBytes(model.size_bytes)})`
-          : String(model);
-        el.localModelPath.appendChild(option);
-      });
-    }
+    populateLocalModelSelect(el.localModelPath, models);
+    populateLocalModelSelect(el.sidebarLocalModelPath, models);
 
     if (data.status?.loaded && data.status.model_path) {
       el.localModelPath.value = data.status.model_path;
+      el.sidebarLocalModelPath.value = data.status.model_path;
     } else if (previousSelection) {
       el.localModelPath.value = previousSelection;
+      el.sidebarLocalModelPath.value = previousSidebarSelection || previousSelection;
     }
     renderModelStatus(data.status);
     if (state.lastHfFiles.length) {
@@ -1102,12 +1784,38 @@ async function refreshModels() {
     }
   } catch (error) {
     setModelStatus(error.message || "Model scan failed", false);
+    setSidebarModelError(error.message || "Model scan failed.");
   }
+}
+
+function populateLocalModelSelect(select, models) {
+  select.innerHTML = "";
+  if (!models.length) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "No GGUF files found";
+    select.appendChild(option);
+    return;
+  }
+  models.forEach((model) => {
+    const option = document.createElement("option");
+    option.value = model.path || model;
+    option.textContent = model.relative_path
+      ? `${model.relative_path} (${formatBytes(model.size_bytes)})`
+      : String(model);
+    select.appendChild(option);
+  });
 }
 
 async function loadChatSessions() {
   if (!el.chatHistorySelect) {
-    return;
+    return [];
+  }
+  if (!state.activeCharacter?.id) {
+    state.chatSessions = [];
+    renderChatHistorySelect();
+    renderChatHistoryShelf();
+    return [];
   }
   const params = state.activeCharacter?.id
     ? `?character_id=${encodeURIComponent(state.activeCharacter.id)}`
@@ -1120,9 +1828,13 @@ async function loadChatSessions() {
     }
     state.chatSessions = data;
     renderChatHistorySelect();
+    renderChatHistoryShelf();
+    return state.chatSessions;
   } catch {
     state.chatSessions = [];
     renderChatHistorySelect();
+    renderChatHistoryShelf();
+    return [];
   }
 }
 
@@ -1149,7 +1861,7 @@ function renderChatHistorySelect() {
   el.chatHistorySelect.innerHTML = "";
   const placeholder = document.createElement("option");
   placeholder.value = "";
-  placeholder.textContent = "Past Chats";
+  placeholder.textContent = state.activeCharacter?.id ? "Past Chats" : "Select a character first";
   el.chatHistorySelect.appendChild(placeholder);
 
   state.chatSessions.forEach((session) => {
@@ -1164,6 +1876,88 @@ function renderChatHistorySelect() {
   el.chatHistorySelect.value = previous;
 }
 
+function renderChatHistoryShelf() {
+  el.chatHistoryShelf.innerHTML = "";
+  if (!state.activeCharacter?.id) {
+    const empty = document.createElement("div");
+    empty.className = "empty-state compact-empty";
+    empty.textContent = "Select a character to see timelines.";
+    el.chatHistoryShelf.appendChild(empty);
+    return;
+  }
+  if (!state.chatSessions.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty-state compact-empty";
+    empty.textContent = "No saved timelines yet.";
+    el.chatHistoryShelf.appendChild(empty);
+    return;
+  }
+  state.chatSessions.forEach((session) => {
+    const button = document.createElement("button");
+    button.className = "history-row";
+    button.type = "button";
+    if (session.id === state.activeChatId) {
+      button.classList.add("active");
+    }
+    const title = document.createElement("span");
+    title.className = "history-title";
+    title.textContent = session.title || "Untitled Chat";
+    const meta = document.createElement("span");
+    meta.className = "history-meta";
+    meta.textContent = `${session.messages?.length || 0} messages - ${formatDateTime(session.updated_at)}`;
+    button.append(title, meta);
+    button.addEventListener("click", () => loadChatSession(session));
+    el.chatHistoryShelf.appendChild(button);
+  });
+}
+
+function toggleHistoryShelf() {
+  const collapsed = el.chatHistoryShelf.classList.toggle("hidden");
+  el.toggleHistoryShelf.textContent = collapsed ? "Show" : "Hide";
+  el.toggleHistoryShelf.setAttribute("aria-expanded", String(!collapsed));
+}
+
+function startNewChat() {
+  if (!state.activeCharacter?.id) {
+    renderNoCharacterPlaceholder();
+    return;
+  }
+  if (state.messages.length) {
+    state.pendingNewChat = true;
+    openModal(el.newChatModal, el.confirmNewChat);
+    return;
+  }
+  beginFreshChatBranch();
+}
+
+async function confirmStartNewChat() {
+  el.confirmNewChat.disabled = true;
+  try {
+    await persistActiveChat();
+    beginFreshChatBranch();
+    await loadChatSessions();
+  } finally {
+    el.confirmNewChat.disabled = false;
+    state.pendingNewChat = false;
+    closeModal(el.newChatModal);
+  }
+}
+
+function cancelStartNewChat() {
+  state.pendingNewChat = false;
+  closeModal(el.newChatModal);
+}
+
+function beginFreshChatBranch() {
+  state.activeChatId = null;
+  el.chatHistorySelect.value = "";
+  state.selectedMessageIds.clear();
+  state.editingMessageId = null;
+  resetChatToFirstMessage();
+  renderChatHistorySelect();
+  renderChatHistoryShelf();
+}
+
 async function loadSelectedChat() {
   const chatId = el.chatHistorySelect.value;
   if (!chatId) {
@@ -1175,14 +1969,20 @@ async function loadSelectedChat() {
     if (!response.ok) {
       throw new Error(session.detail || "Could not load chat");
     }
-    state.activeChatId = session.id;
-    state.messages = normalizeSessionMessages(session.messages || []);
-    state.selectedMessageIds.clear();
-    state.editingMessageId = null;
-    renderSessionMessages();
+    loadChatSession(session);
   } catch (error) {
     console.error(error);
   }
+}
+
+function loadChatSession(session) {
+  state.activeChatId = session.id;
+  state.messages = normalizeSessionMessages(session.messages || []);
+  state.selectedMessageIds.clear();
+  state.editingMessageId = null;
+  renderSessionMessages();
+  renderChatHistorySelect();
+  renderChatHistoryShelf();
 }
 
 async function deleteActiveChat() {
@@ -1190,7 +1990,7 @@ async function deleteActiveChat() {
     return;
   }
   if (!state.activeChatId) {
-    clearChat();
+    beginFreshChatBranch();
     return;
   }
   const chatId = state.activeChatId;
@@ -1199,7 +1999,7 @@ async function deleteActiveChat() {
   } catch (error) {
     console.error(error);
   } finally {
-    clearChat();
+    beginFreshChatBranch();
     await loadChatSessions();
   }
 }
@@ -1242,8 +2042,8 @@ async function uploadSelectedAsset(input, statusWriter) {
   if (!file) {
     return null;
   }
-  if (!["image/png", "image/jpeg"].includes(file.type)) {
-    statusWriter("Only PNG and JPG avatar images are supported.");
+  if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+    statusWriter("Only PNG, JPG, and WebP images are supported.");
     input.value = "";
     return null;
   }
@@ -1311,10 +2111,12 @@ function normalizeSessionMessages(messages) {
 async function loadModel() {
   if (!el.localModelPath.value) {
     setModelStatus("Place a .gguf file in storage/models", false);
+    setSidebarModelError("Place a .gguf file in storage/models.");
     return;
   }
   setBusy(true);
   setModelStatus("Loading model into memory", false);
+  setSidebarModelError("");
   try {
     const response = await fetch("/api/models/load", {
       method: "POST",
@@ -1330,13 +2132,18 @@ async function loadModel() {
     if (!response.ok) {
       if (typeof data.detail === "object" && data.detail) {
         renderModelStatus(data.detail);
+        setSidebarModelError(
+          data.detail.diagnostic_message || data.detail.message || "Model load failed."
+        );
         return;
       }
       throw new Error(data.detail || "Model load failed");
     }
     renderModelStatus(data);
+    setSidebarModelError("");
   } catch (error) {
     setModelStatus(error.message, false);
+    setSidebarModelError(error.message || "Model load failed.");
     showModelDiagnostic({
       error_code: "model_load_error",
       diagnostic_title: "Model Load Failed",
@@ -1348,9 +2155,15 @@ async function loadModel() {
   }
 }
 
+async function loadModelFromSidebar() {
+  el.localModelPath.value = el.sidebarLocalModelPath.value;
+  await loadModel();
+}
+
 async function unloadModel() {
   setBusy(true);
   setModelStatus("Unloading model from memory", true);
+  setSidebarModelError("");
   try {
     const response = await fetch("/api/models/unload", { method: "POST" });
     const data = await response.json();
@@ -1374,8 +2187,11 @@ async function loadCharacters() {
     }
     state.characters = data;
     renderCharacterList();
+    renderSidebarCharacterList();
   } catch (error) {
+    state.characters = [];
     renderCharacterEmpty(error.message || "Could not load characters.");
+    renderSidebarCharacterList();
   }
 }
 
@@ -1412,8 +2228,51 @@ function renderCharacterList() {
       setCharacterEditor(character);
       applyCharacter(character);
       renderCharacterList();
+      renderSidebarCharacterList();
+      closeModal(el.characterModal);
     });
     el.characterList.appendChild(button);
+  });
+}
+
+function renderSidebarCharacterList() {
+  el.sidebarCharacterList.innerHTML = "";
+  if (!state.characters.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty-state compact-empty";
+    empty.textContent = "No saved character cards yet.";
+    el.sidebarCharacterList.appendChild(empty);
+    return;
+  }
+
+  state.characters.forEach((character) => {
+    const button = document.createElement("button");
+    button.className = "sidebar-card-item";
+    button.type = "button";
+    if (state.activeCharacter?.id === character.id) {
+      button.classList.add("active");
+    }
+
+    const avatar = document.createElement("span");
+    avatar.className = "avatar avatar-small";
+    renderAvatar(avatar, character.avatar_url || character.avatar_file, character.name);
+
+    const copy = document.createElement("span");
+    copy.className = "sidebar-card-copy";
+    const name = document.createElement("strong");
+    name.textContent = character.name;
+    const meta = document.createElement("span");
+    meta.textContent = character.personality || character.description || "No card notes yet.";
+    copy.append(name, meta);
+
+    button.append(avatar, copy);
+    button.addEventListener("click", () => {
+      setCharacterEditor(character);
+      applyCharacter(character);
+      renderCharacterList();
+      renderSidebarCharacterList();
+    });
+    el.sidebarCharacterList.appendChild(button);
   });
 }
 
@@ -1431,17 +2290,22 @@ function setCharacterEditor(character) {
   el.characterEditorMode.textContent = profile.id ? "Saved" : "Draft";
   el.characterEditorName.value = profile.name;
   el.characterEditorAvatarUrl.value = profile.avatar_url || profile.avatar_file || "";
+  el.characterEditorBackgroundUrl.value =
+    profile.chat_background_url || profile.chat_background_file || "";
   el.characterEditorDescription.value = profile.description || "";
   el.characterEditorPersonality.value = profile.personality || "";
   el.characterEditorScenario.value = profile.scenario || "";
   el.characterEditorExamples.value = profile.example_dialogue || "";
   el.characterEditorFirstMessage.value = profile.first_message || DEFAULT_CHARACTER.first_message;
+  el.characterEditorBackdrop.checked = profile.chat_backdrop_enabled !== false;
   el.characterAvatarFile.value = "";
+  el.characterBackgroundFile.value = "";
   updateCharacterEditorAvatar();
 }
 
 function editorCharacterPayload() {
   const avatarValue = el.characterEditorAvatarUrl.value.trim();
+  const backgroundValue = el.characterEditorBackgroundUrl.value.trim();
   return {
     id: state.editingCharacterId,
     name: el.characterEditorName.value.trim() || "Assistant",
@@ -1452,6 +2316,9 @@ function editorCharacterPayload() {
     first_message: el.characterEditorFirstMessage.value.trim(),
     avatar_url: avatarValue.startsWith("/api/assets/") ? "" : avatarValue,
     avatar_file: avatarValue.startsWith("/api/assets/") ? avatarValue : "",
+    chat_background_url: backgroundValue.startsWith("/api/assets/") ? "" : backgroundValue,
+    chat_background_file: backgroundValue.startsWith("/api/assets/") ? backgroundValue : "",
+    chat_backdrop_enabled: el.characterEditorBackdrop.checked,
   };
 }
 
@@ -1485,16 +2352,24 @@ function setCharacterSaveStatus(message) {
   el.characterSaveStatus.textContent = message;
 }
 
-function applyCharacter(character, options = { resetChat: true }) {
+async function applyCharacter(character, options = {}) {
+  const shouldReset = options.resetChat !== false;
+  const shouldLoadLatest = options.loadLatest !== false;
   const profile = normalizeCharacter(character);
   state.activeCharacter = profile;
   el.characterName.value = profile.name;
   el.characterAvatar.value = profile.avatar_url || profile.avatar_file || "";
   updateCharacterPreview();
   updateChatBackground();
-  loadChatSessions();
-  if (options.resetChat) {
-    clearChat();
+  renderSidebarCharacterList();
+  const sessions = await loadChatSessions();
+  if (!shouldReset) {
+    return;
+  }
+  if (shouldLoadLatest && sessions.length) {
+    loadChatSession(sessions[0]);
+  } else {
+    beginFreshChatBranch();
   }
 }
 
@@ -1510,6 +2385,9 @@ function normalizeCharacter(character) {
     first_message: character?.first_message || DEFAULT_CHARACTER.first_message,
     avatar_url: character?.avatar_url || "",
     avatar_file: character?.avatar_file || "",
+    chat_background_url: character?.chat_background_url || "",
+    chat_background_file: character?.chat_background_file || "",
+    chat_backdrop_enabled: character?.chat_backdrop_enabled !== false,
   };
 }
 
@@ -1566,6 +2444,38 @@ async function exportCharacterCard() {
   }
 }
 
+async function deleteCharacterCard() {
+  const characterId = state.editingCharacterId || state.activeCharacter?.id;
+  if (!characterId) {
+    setCharacterSaveStatus("Select a saved character to delete.");
+    return;
+  }
+  if (!window.confirm("Delete this character profile from local storage?")) {
+    return;
+  }
+  try {
+    const response = await fetch(`/api/characters/${encodeURIComponent(characterId)}`, {
+      method: "DELETE",
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload.detail || "Could not delete character");
+    }
+    if (state.activeCharacter?.id === characterId) {
+      state.activeCharacter = null;
+      el.characterName.value = "";
+      el.characterAvatar.value = "";
+      renderNoCharacterPlaceholder();
+      await loadChatSessions();
+    }
+    setCharacterEditor(DEFAULT_CHARACTER);
+    await loadCharacters();
+    setCharacterSaveStatus("Character deleted.");
+  } catch (error) {
+    setCharacterSaveStatus(error.message || "Could not delete character.");
+  }
+}
+
 function portableCharacterPayload(profile) {
   return {
     spec: "chara_card_v2",
@@ -1578,6 +2488,8 @@ function portableCharacterPayload(profile) {
       first_mes: profile.first_message,
       mes_example: profile.example_dialogue,
       avatar: profile.avatar_file || profile.avatar_url,
+      chat_background: profile.chat_background_file || profile.chat_background_url,
+      chat_backdrop_enabled: profile.chat_backdrop_enabled !== false,
       creator_notes: "Exported from SweetrollLM.",
       alternate_greetings: [],
       tags: [],
@@ -1598,6 +2510,24 @@ async function handleCharacterAvatarFile() {
     setCharacterSaveStatus(`Stored avatar ${asset.filename}.`);
   } catch (error) {
     setCharacterSaveStatus(error.message || "Could not store avatar image.");
+  }
+}
+
+async function handleCharacterBackgroundFile() {
+  try {
+    const asset = await uploadSelectedAsset(el.characterBackgroundFile, setCharacterSaveStatus);
+    if (!asset) {
+      return;
+    }
+    el.characterEditorBackgroundUrl.value = asset.url;
+    if (state.activeCharacter?.id && state.activeCharacter.id === state.editingCharacterId) {
+      state.activeCharacter.chat_background_file = asset.url;
+      state.activeCharacter.chat_background_url = "";
+      updateChatBackground();
+    }
+    setCharacterSaveStatus(`Stored backdrop ${asset.filename}.`);
+  } catch (error) {
+    setCharacterSaveStatus(error.message || "Could not store backdrop image.");
   }
 }
 
@@ -1723,14 +2653,42 @@ async function savePersonaCard() {
     if (!response.ok) {
       throw new Error(saved.detail || "Could not save persona");
     }
-    setPersonaEditor(saved);
     applyPersona(saved, { renderList: false });
     await loadPersonas();
+    setPersonaEditor(DEFAULT_PERSONA);
     setPersonaSaveStatus(`Saved ${saved.name}.`);
   } catch (error) {
     setPersonaSaveStatus(error.message || "Could not save persona.");
   } finally {
     el.savePersona.disabled = false;
+  }
+}
+
+async function deletePersonaCard() {
+  const personaId = state.editingPersonaId || state.activePersona?.id;
+  if (!personaId) {
+    setPersonaSaveStatus("Select a saved persona to delete.");
+    return;
+  }
+  if (!window.confirm("Delete this persona from local storage?")) {
+    return;
+  }
+  try {
+    const response = await fetch(`/api/personas/${encodeURIComponent(personaId)}`, {
+      method: "DELETE",
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload.detail || "Could not delete persona");
+    }
+    if (state.activePersona?.id === personaId) {
+      state.activePersona = null;
+    }
+    setPersonaEditor(DEFAULT_PERSONA);
+    await loadPersonas();
+    setPersonaSaveStatus("Persona deleted.");
+  } catch (error) {
+    setPersonaSaveStatus(error.message || "Could not delete persona.");
   }
 }
 
@@ -1974,6 +2932,36 @@ async function saveLorebook() {
     el.lorebookSaveStatus.textContent = error.message || "Could not save lorebook.";
   } finally {
     el.saveLorebook.disabled = false;
+  }
+}
+
+async function deleteLorebookCard() {
+  if (!state.editingLorebookId) {
+    el.lorebookSaveStatus.textContent = "Select a saved lorebook to delete.";
+    return;
+  }
+  if (!window.confirm("Delete this lorebook from local storage?")) {
+    return;
+  }
+  const lorebookId = state.editingLorebookId;
+  try {
+    const response = await fetch(`/api/lorebooks/${encodeURIComponent(lorebookId)}`, {
+      method: "DELETE",
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload.detail || "Could not delete lorebook");
+    }
+    if (state.activeLorebook?.id === lorebookId) {
+      state.activeLorebook = null;
+      state.lorebookEnabled = false;
+      updateLorebookStatus();
+    }
+    newLorebookDraft();
+    await loadLorebooks();
+    el.lorebookSaveStatus.textContent = "Lorebook deleted.";
+  } catch (error) {
+    el.lorebookSaveStatus.textContent = error.message || "Could not delete lorebook.";
   }
 }
 
@@ -2232,6 +3220,7 @@ async function generateImageFromExtension() {
       body: JSON.stringify({
         provider: el.imageProvider.value,
         endpoint: el.imageEndpoint.value.trim(),
+        api_key: activeApiProvider()?.api_key || "",
         model: el.imageModel.value.trim(),
         prompt,
         negative_prompt: el.imageNegativePrompt.value.trim(),
@@ -2282,9 +3271,6 @@ async function handleImageAttachment(file) {
     el.visionCaptionStatus.textContent = "Attach a PNG, JPG, WebP, or GIF image.";
     return;
   }
-  if (!state.extensionsOpen) {
-    toggleExtensionsDrawer();
-  }
 
   el.extensionStatus.textContent = "Captioning";
   el.visionCaptionStatus.textContent = `Reading ${file.name}.`;
@@ -2304,6 +3290,8 @@ async function handleImageAttachment(file) {
       body: JSON.stringify({
         provider: el.visionProvider.value,
         endpoint: el.visionEndpoint.value.trim(),
+        model: selectedModelValue(el.visionModelSelect, el.visionModel),
+        api_key: activeApiProvider()?.api_key || "",
         filename: file.name,
         data_url: dataUrl,
       }),
@@ -2373,6 +3361,10 @@ async function sendMessage(event) {
   event.preventDefault();
   const content = el.messageInput.value.trim();
   if (!content || state.streaming) {
+    return;
+  }
+  if (!state.activeCharacter?.id) {
+    renderNoCharacterPlaceholder("Select or import a character card before sending a message.");
     return;
   }
 
@@ -2533,12 +3525,14 @@ function buildChatPayload() {
 
   if (source === "cloud") {
     const provider = activeApiProvider();
+    const manualModel = selectedModelValue(el.cloudModelSelect, el.cloudModel);
     payload.cloud = {
       provider: provider ? inferCloudProvider(provider.base_url) : el.cloudProvider.value,
       base_url: provider?.base_url || el.baseUrl.value,
-      model: provider?.default_model || el.cloudModel.value,
+      model: provider?.default_model || manualModel,
       api_key: provider?.api_key || el.apiKey.value,
     };
+    payload.api_provider_id = provider?.id || null;
   }
 
   return payload;
@@ -2554,14 +3548,18 @@ function appendMessage(message, index) {
   row.classList.toggle("message-collapsed", Boolean(normalized.folded));
   row.classList.toggle("message-hidden", Boolean(normalized.hidden));
 
+  const selectorFrame = document.createElement("label");
+  selectorFrame.className = "message-select-frame";
+  selectorFrame.title = "Select message";
+
   const selector = document.createElement("input");
   selector.className = "message-select";
   selector.type = "checkbox";
-  selector.title = "Select message";
   selector.checked = state.selectedMessageIds.has(normalized.id);
   selector.addEventListener("change", () => {
     toggleMessageSelection(normalized.id, selector.checked);
   });
+  selectorFrame.appendChild(selector);
 
   const avatar = document.createElement("div");
   avatar.className = "avatar";
@@ -2591,8 +3589,9 @@ function appendMessage(message, index) {
   }
 
   bubble.append(label, body);
-  row.append(selector, avatar, bubble);
+  row.append(selectorFrame, avatar, bubble);
   el.chatMessages.appendChild(row);
+  applyChatBubbleOpacityToDom();
   scrollChatToBottom();
   return body;
 }
@@ -2718,6 +3717,7 @@ function updateBulkActionBar() {
   pruneSelectedMessages();
   const count = state.selectedMessageIds.size;
   el.bulkActionBar.classList.toggle("hidden", count === 0);
+  el.chatMessages.classList.toggle("multi-select-active", count > 0);
   el.bulkSelectionCount.textContent = `${count} selected`;
 }
 
@@ -2747,6 +3747,9 @@ async function deleteSelectedMessages() {
 }
 
 async function persistActiveChat() {
+  if (!state.activeCharacter?.id || !state.messages.length) {
+    return null;
+  }
   try {
     const response = await fetch("/api/chats", {
       method: "POST",
@@ -2839,6 +3842,7 @@ function appendThinkingMessage(name) {
   bubble.append(header, body);
   row.append(avatar, bubble);
   el.chatMessages.appendChild(row);
+  applyChatBubbleOpacityToDom();
   state.thinkingBody = body;
   state.thinkingRow = row;
   state.thinkingActive = true;
@@ -2876,6 +3880,10 @@ function clearChat() {
   el.chatHistorySelect.value = "";
   state.selectedMessageIds.clear();
   state.editingMessageId = null;
+  if (!state.activeCharacter?.id) {
+    renderNoCharacterPlaceholder();
+    return;
+  }
   resetChatToFirstMessage();
 }
 
@@ -2885,6 +3893,10 @@ function resetChatToFirstMessage() {
   state.selectedMessageIds.clear();
   state.editingMessageId = null;
   updateBulkActionBar();
+  if (!state.activeCharacter?.id) {
+    renderNoCharacterPlaceholder();
+    return;
+  }
   const content = firstMessage();
   const first = {
     id: createMessageId(),
@@ -2899,22 +3911,123 @@ function resetChatToFirstMessage() {
   scrollChatToBottom();
 }
 
+function renderNoCharacterPlaceholder(message) {
+  state.messages = [];
+  state.activeChatId = null;
+  state.selectedMessageIds.clear();
+  state.editingMessageId = null;
+  updateBulkActionBar();
+  renderChatHistorySelect();
+  renderChatHistoryShelf();
+  el.chatMessages.innerHTML = "";
+  const empty = document.createElement("div");
+  empty.className = "workspace-placeholder";
+  const title = document.createElement("h3");
+  title.textContent = "No Character Selected";
+  const copy = document.createElement("p");
+  copy.textContent =
+    message ||
+    "No Character Selected. Please create a new identity or import a community card below to begin your chat session.";
+  const actions = document.createElement("div");
+  actions.className = "button-row compact-actions";
+  const create = document.createElement("button");
+  create.className = "primary-button";
+  create.type = "button";
+  create.textContent = "Create / Import Character";
+  create.addEventListener("click", openCharacterLibrary);
+  actions.appendChild(create);
+  empty.append(title, copy, actions);
+  el.chatMessages.appendChild(empty);
+  el.chatTitle.textContent = "No Character Selected";
+  el.chatSubtitle.textContent = "Create or import a card to begin";
+  updateChatBackground();
+}
+
 function updateCharacterPreview() {
-  el.chatTitle.textContent = characterName();
+  const hasCharacter = Boolean(state.activeCharacter?.id);
+  el.chatTitle.textContent = hasCharacter ? characterName() : "No Character Selected";
   renderAvatar(el.characterAvatarPreview, characterAvatar(), characterName());
   updateChatBackground();
 }
 
 function updateChatBackground() {
-  const enabled = el.characterBackgrounds?.checked;
-  const avatar = characterAvatar();
-  if (!enabled || !avatar) {
-    el.chatBackdrop.classList.remove("active");
-    el.chatBackdrop.style.backgroundImage = "";
+  if (!el.chatBackdrop || !el.chatMain) {
     return;
   }
-  el.chatBackdrop.style.backgroundImage = `url("${avatar.replace(/"/g, '\\"')}")`;
+  const source = resolveChatBackgroundSource();
+  if (!source) {
+    el.chatBackdrop.classList.remove("active");
+    el.chatMain.classList.remove("wallpaper-active");
+    el.chatBackdrop.style.backgroundImage = "";
+    applyChatBubbleOpacityToDom();
+    return;
+  }
+  el.chatBackdrop.style.backgroundImage = `url("${cssUrlEscape(source)}")`;
   el.chatBackdrop.classList.add("active");
+  el.chatMain.classList.add("wallpaper-active");
+  applyChatBubbleOpacityToDom();
+}
+
+function resolveChatBackgroundSource() {
+  const cardBackgroundsEnabled = Boolean(el.characterBackgrounds?.checked);
+  const characterBackgroundEnabled =
+    cardBackgroundsEnabled &&
+    state.activeCharacter?.id &&
+    state.activeCharacter?.chat_backdrop_enabled !== false;
+  const cardBackground = characterBackground();
+  if (characterBackgroundEnabled && isValidBackdropImage(cardBackground)) {
+    return cardBackground;
+  }
+  const avatarBackground = characterAvatar();
+  if (characterBackgroundEnabled && isValidBackdropImage(avatarBackground)) {
+    return avatarBackground;
+  }
+  const globalBackground = globalBackgroundUrl();
+  if (globalBackground) {
+    return globalBackground;
+  }
+  return "";
+}
+
+function characterBackground() {
+  return (
+    state.activeCharacter?.chat_background_file ||
+    state.activeCharacter?.chat_background_url ||
+    ""
+  ).trim();
+}
+
+function globalBackgroundUrl() {
+  const background = state.appSettings?.global_background_path || "";
+  if (!background) {
+    return "";
+  }
+  if (isValidBackdropImage(background)) {
+    return background;
+  }
+  const version =
+    state.backgroundRevision ||
+    state.appSettings.updated_at ||
+    background;
+  return `/api/app-settings/background?v=${encodeURIComponent(String(version))}`;
+}
+
+function cssUrlEscape(value) {
+  return String(value || "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+function isValidBackdropImage(value) {
+  const image = String(value || "").trim();
+  if (!image) {
+    return false;
+  }
+  return (
+    image.startsWith("data:image/") ||
+    image.startsWith("/api/assets/") ||
+    image.startsWith("/static/") ||
+    /^https?:\/\//i.test(image) ||
+    /\.(png|jpe?g|webp|gif)(?:[?#].*)?$/i.test(image)
+  );
 }
 
 function renderAvatar(target, avatarUrl, name) {
@@ -2938,7 +4051,7 @@ function firstMessage() {
 }
 
 function characterName() {
-  return el.characterName.value.trim() || "Assistant";
+  return el.characterName.value.trim() || state.activeCharacter?.name || "Assistant";
 }
 
 function characterAvatar() {
@@ -2966,11 +4079,22 @@ function setBusy(busy) {
   el.loadModel.disabled = busy;
   el.unloadModel.disabled = busy;
   el.refreshModels.disabled = busy;
+  el.sidebarLoadModel.disabled = busy;
+  el.sidebarUnloadModel.disabled = busy;
+  el.sidebarRefreshModels.disabled = busy;
 }
 
 function setModelStatus(message, loaded) {
   el.modelStatus.textContent = message;
   el.activeModelDot.classList.toggle("loaded", Boolean(loaded));
+  el.sidebarModelStatus.textContent = message;
+  el.sidebarActiveModelDot.classList.toggle("loaded", Boolean(loaded));
+}
+
+function setSidebarModelError(message) {
+  const text = String(message || "").trim();
+  el.sidebarModelInlineError.textContent = text;
+  el.sidebarModelInlineError.classList.toggle("hidden", !text);
 }
 
 function renderModelStatus(status) {

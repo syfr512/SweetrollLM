@@ -233,7 +233,7 @@ async def verify_external_fallback_routing() -> tuple[bool, str]:
             koboldcpp_args='--model "{model}" --port {port} --usecpu --noavx2',
             root_dir=temp_root,
             package_dir=temp_root,
-            external_api_model="local-model",
+            external_api_model="koboldcpp",
         )
         fake_storage_settings = SimpleNamespace(models_dir=model_dir)
         local_engine.settings = fake_settings

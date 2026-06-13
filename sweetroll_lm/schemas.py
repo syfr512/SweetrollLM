@@ -68,6 +68,7 @@ class ApiProviderProfile(BaseModel):
     api_key: str = ""
     default_model: str = Field(min_length=1)
     is_default: bool = False
+    is_fallback: bool = False
     created_at: str
     updated_at: str
 
@@ -87,6 +88,7 @@ class ApiProviderSaveRequest(BaseModel):
     api_key: str = ""
     default_model: str = Field(min_length=1)
     is_default: bool = False
+    is_fallback: bool = False
 
     @field_validator("base_url")
     @classmethod
@@ -102,6 +104,7 @@ class ChatRequest(BaseModel):
     source: InferenceSource
     messages: list[ChatMessage]
     system_prompt: str = ""
+    api_provider_id: str | None = None
     character_id: str | None = None
     persona_id: str | None = None
     lorebook_id: str | None = None
@@ -148,10 +151,26 @@ class ImageGenerationResponse(BaseModel):
     raw: dict[str, Any] = Field(default_factory=dict)
 
 
+class ApiProviderTestResponse(BaseModel):
+    ok: bool
+    message: str
+    status_code: int | None = None
+    endpoint: str = ""
+
+
 class VisionCaptionRequest(BaseModel):
-    provider: Literal["llava", "qwen-vl", "openai", "custom"] = "custom"
+    provider: Literal[
+        "llava",
+        "qwen-vl",
+        "openai",
+        "openrouter",
+        "google",
+        "ollama",
+        "custom",
+    ] = "custom"
     endpoint: str = ""
     api_key: SecretStr | None = None
+    model: str = ""
     filename: str = "attached-image.png"
     data_url: str = Field(min_length=16)
     prompt: str = (
@@ -182,6 +201,13 @@ class LocalModelFile(BaseModel):
     size_bytes: int
 
 
+class LocalModelImportResponse(BaseModel):
+    selected: bool = False
+    message: str = ""
+    model: LocalModelFile | None = None
+    models: list[LocalModelFile] = Field(default_factory=list)
+
+
 class LocalModelStatus(BaseModel):
     loaded: bool
     status: Literal["idle", "launching", "loaded", "error"] = "idle"
@@ -199,7 +225,7 @@ class LocalModelStatus(BaseModel):
 class ExternalApiFallbackConfig(BaseModel):
     enabled: bool = True
     base_url: str = "http://127.0.0.1:5001/v1"
-    model: str = "local-model"
+    model: str = "koboldcpp"
     api_key: SecretStr | None = None
 
     @field_validator("base_url")
@@ -230,6 +256,19 @@ class ConsoleLogResponse(BaseModel):
     truncated: bool = False
 
 
+class AppAppearanceSettings(BaseModel):
+    global_background_path: str = ""
+    chat_bubble_opacity: float = Field(default=0.82, ge=0.1, le=1.0)
+    background_image_opacity: float = Field(default=0.9, ge=0.0, le=1.0)
+    updated_at: str = Field(default_factory=utc_now_iso)
+
+
+class BackgroundSelectResponse(BaseModel):
+    selected: bool
+    settings: AppAppearanceSettings
+    message: str = ""
+
+
 class CharacterProfile(BaseModel):
     id: str
     name: str = Field(min_length=1, max_length=120)
@@ -240,6 +279,9 @@ class CharacterProfile(BaseModel):
     first_message: str = ""
     avatar_url: str = ""
     avatar_file: str = ""
+    chat_background_url: str = ""
+    chat_background_file: str = ""
+    chat_backdrop_enabled: bool = True
     created_at: str
     updated_at: str
 
@@ -254,6 +296,9 @@ class CharacterSaveRequest(BaseModel):
     first_message: str = ""
     avatar_url: str = ""
     avatar_file: str = ""
+    chat_background_url: str = ""
+    chat_background_file: str = ""
+    chat_backdrop_enabled: bool = True
 
 
 class AssetSaveRequest(BaseModel):
