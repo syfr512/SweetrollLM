@@ -1,16 +1,14 @@
-<p align="center"><img src="storage/assets/logo.png" width="220" alt="SweetrollLM Logo"></p>
+<p align="center"><img src="sweetroll_lm/static/assets/icon.png" width="220" alt="SweetrollLM Logo"></p>
 
 <h1 align="center">🛖 SweetrollLM: The Guildmaster's Secret AI Proxy</h1>
 
-> "Let me guess... someone stole your sweetroll?" — Ancient Hold Guard
+> "Let me guess... someone stole your sweetroll?"
 
 ---
 
-## ⚔️ Welcome, Weary Digital Traveler
+## ⚔️ Welcome, fellow sweetroll enthusiast!
 
-Pull up a chair, lower your hood, and stop feeding gold coins to the corporate cloud lords just to flirt with a chatbot, interrogate a model, or build a lore-soaked roleplay den.
-
-**SweetrollLM** is a local-first AI sandbox for rogue developers, degenerate gamers, character-card collectors, prompt alchemists, and anyone who believes their conversations belong in their own strongbox.
+**SweetrollLM** is a local-first AI sandbox for rogue developers, gamers, character-card collectors, prompt alchemists, and anyone who believes their conversations belong in their own strongbox.
 
 This is the tavern where:
 
@@ -29,7 +27,7 @@ Just you, your models, your characters, and a suspiciously cozy pile of sweetrol
 
 ## 🧙 Legendary Architecture Features
 
-### 🧪 The Alchemist's Backdrop Canvas
+### 🧪 The Archmage's Backdrop Canvas
 
 SweetrollLM has a **dual-layer wallpaper engine** built for dramatic roleplay ambience without murdering readability.
 
