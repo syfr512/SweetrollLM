@@ -373,6 +373,7 @@ function cacheElements() {
 }
 
 function bindEvents() {
+  bindSidebarAccordions();
   el.inferenceSource.addEventListener("change", updateInferenceVisibility);
   el.cloudProvider.addEventListener("change", updateCloudDefaults);
   el.cloudModelSelect.addEventListener("change", () => {
@@ -554,7 +555,9 @@ function bindEvents() {
   el.cancelNewChat.addEventListener("click", cancelStartNewChat);
   el.cancelNewChatSecondary.addEventListener("click", cancelStartNewChat);
   el.deleteSelectedMessages.addEventListener("click", deleteSelectedMessages);
-  el.chatHistorySelect.addEventListener("change", loadSelectedChat);
+  if (el.chatHistorySelect) {
+    el.chatHistorySelect.addEventListener("change", loadSelectedChat);
+  }
   el.toggleExtensions.addEventListener("click", toggleExtensionsDrawer);
   el.saveImageConfig.addEventListener("click", saveImageExtensionConfig);
   el.generateImage.addEventListener("click", generateImageFromExtension);
@@ -583,6 +586,8 @@ function bindEvents() {
     });
   });
   el.chatForm.addEventListener("submit", sendMessage);
+  el.chatMessages.addEventListener("pointerdown", handleMessageExecutionPointerDown);
+  el.chatMessages.addEventListener("click", handleMessageExecutionClick);
   el.messageInput.addEventListener("input", autosizeComposer);
   el.messageInput.addEventListener("keydown", (event) => {
     if (event.key === "Enter" && !event.shiftKey) {
@@ -590,6 +595,47 @@ function bindEvents() {
       el.chatForm.requestSubmit();
     }
   });
+}
+
+function bindSidebarAccordions() {
+  document.querySelectorAll("[data-accordion-section]").forEach((section) => {
+    const toggle = section.querySelector("[data-accordion-toggle]");
+    const body = section.querySelector("[data-accordion-body]");
+    if (!toggle || !body) {
+      return;
+    }
+    const key = section.dataset.accordionKey || "";
+    const storageKey = key ? `sweetroll-lm-accordion-${key}` : "";
+    const saved = storageKey ? window.localStorage.getItem(storageKey) : null;
+    const defaultCollapsed = section.dataset.accordionDefaultCollapsed === "true";
+    setAccordionCollapsed(section, saved === null ? defaultCollapsed : saved === "true", {
+      persist: false,
+    });
+    toggle.addEventListener("click", () => {
+      setAccordionCollapsed(section, !section.classList.contains("collapsed"));
+    });
+  });
+}
+
+function setAccordionCollapsed(section, collapsed, options = {}) {
+  const persist = options.persist !== false;
+  const toggle = section.querySelector("[data-accordion-toggle]");
+  const arrow = section.querySelector(".accordion-arrow");
+  const key = section.dataset.accordionKey || "";
+  section.classList.toggle("collapsed", Boolean(collapsed));
+  if (toggle) {
+    toggle.setAttribute("aria-expanded", String(!collapsed));
+  }
+  if (arrow) {
+    arrow.textContent = collapsed ? "▸" : "▾";
+  }
+  if (persist && key) {
+    try {
+      window.localStorage.setItem(`sweetroll-lm-accordion-${key}`, String(Boolean(collapsed)));
+    } catch (error) {
+      console.warn("Unable to persist accordion preference", error);
+    }
+  }
 }
 
 function loadSidebarPreference() {
@@ -1808,9 +1854,6 @@ function populateLocalModelSelect(select, models) {
 }
 
 async function loadChatSessions() {
-  if (!el.chatHistorySelect) {
-    return [];
-  }
   if (!state.activeCharacter?.id) {
     state.chatSessions = [];
     renderChatHistorySelect();
@@ -1857,6 +1900,9 @@ function isModelDownloaded(filename) {
 }
 
 function renderChatHistorySelect() {
+  if (!el.chatHistorySelect) {
+    return;
+  }
   const previous = state.activeChatId || "";
   el.chatHistorySelect.innerHTML = "";
   const placeholder = document.createElement("option");
@@ -1950,7 +1996,9 @@ function cancelStartNewChat() {
 
 function beginFreshChatBranch() {
   state.activeChatId = null;
-  el.chatHistorySelect.value = "";
+  if (el.chatHistorySelect) {
+    el.chatHistorySelect.value = "";
+  }
   state.selectedMessageIds.clear();
   state.editingMessageId = null;
   resetChatToFirstMessage();
@@ -1959,6 +2007,9 @@ function beginFreshChatBranch() {
 }
 
 async function loadSelectedChat() {
+  if (!el.chatHistorySelect) {
+    return;
+  }
   const chatId = el.chatHistorySelect.value;
   if (!chatId) {
     return;
@@ -3503,13 +3554,14 @@ function handleStreamEvent(rawEvent) {
   }
 }
 
-function buildChatPayload() {
-  const source = el.inferenceSource.value;
+function buildChatPayload(options = {}) {
+  const source = options.source || el.inferenceSource.value;
+  const messages = options.messages || state.messages;
   const payload = {
     source,
-    chat_id: state.activeChatId,
-    messages: serializeMessagesForBackend(state.messages),
-    system_prompt: el.systemPrompt.value,
+    chat_id: options.chatId === undefined ? state.activeChatId : options.chatId,
+    messages: serializeMessagesForBackend(messages),
+    system_prompt: options.systemPrompt === undefined ? el.systemPrompt.value : options.systemPrompt,
     character_id: state.activeCharacter?.id || null,
     persona_id: state.activePersona?.id || null,
     lorebook_id: state.activeLorebook?.id || null,
@@ -3518,9 +3570,9 @@ function buildChatPayload() {
     local: {
       template: el.promptTemplate.value,
     },
-    temperature: Number(el.temperature.value),
-    top_p: Number(el.topP.value),
-    max_tokens: Number(el.maxTokens.value),
+    temperature: options.temperature === undefined ? Number(el.temperature.value) : options.temperature,
+    top_p: options.topP === undefined ? Number(el.topP.value) : options.topP,
+    max_tokens: options.maxTokens === undefined ? Number(el.maxTokens.value) : options.maxTokens,
   };
 
   if (source === "cloud") {
@@ -3542,9 +3594,12 @@ function appendMessage(message, index) {
   const normalized = ensureClientMessage(message);
   const role = normalized.role;
   const name = role === "user" ? personaName() : characterName();
+  const latestAssistantMessage = isMostRecentAssistantMessage(index);
   const row = document.createElement("article");
   row.className = `message-row ${role}`;
+  row.classList.toggle("group", latestAssistantMessage);
   row.dataset.messageId = normalized.id;
+  row.dataset.index = String(index);
   row.classList.toggle("message-collapsed", Boolean(normalized.folded));
   row.classList.toggle("message-hidden", Boolean(normalized.hidden));
 
@@ -3584,16 +3639,29 @@ function appendMessage(message, index) {
     renderMessageEditor(body, normalized);
   } else if (normalized.hidden) {
     body.textContent = "Message hidden";
+  } else if (normalized.action_status) {
+    body.classList.add("thinking-content");
+    body.textContent = normalized.action_status;
   } else {
     body.innerHTML = window.renderMarkdown(normalized.content);
   }
 
   bubble.append(label, body);
+  if (latestAssistantMessage && state.editingMessageId !== normalized.id) {
+    bubble.append(createMessageExecutionToolbar(normalized, index));
+  }
   row.append(selectorFrame, avatar, bubble);
   el.chatMessages.appendChild(row);
   applyChatBubbleOpacityToDom();
   scrollChatToBottom();
   return body;
+}
+
+function isMostRecentAssistantMessage(index) {
+  return (
+    index === state.messages.length - 1 &&
+    state.messages[index]?.role === "assistant"
+  );
 }
 
 function createMessageToolbar(message, index) {
@@ -3620,6 +3688,331 @@ function messageActionButton(label, handler) {
   button.textContent = label;
   button.addEventListener("click", handler);
   return button;
+}
+
+function createMessageExecutionToolbar(message, index) {
+  const toolbar = document.createElement("div");
+  toolbar.className = "message-exec-toolbar";
+  const variants = ensureAssistantVariants(message);
+  toolbar.append(
+    executionIconButton("Retry response", "retry"),
+    createVariantPager(message, variants),
+    executionIconButton("Continue response", "continue"),
+    executionIconButton("Suggest user reply", "suggest")
+  );
+  toolbar.dataset.messageIndex = String(index);
+  toolbar.dataset.messageId = message.id;
+  return toolbar;
+}
+
+function createVariantPager(message, variants) {
+  const pager = document.createElement("div");
+  pager.className = "variant-pager";
+  const current = Number.isInteger(message.variant_index) ? message.variant_index : 0;
+  const disabled = variants.length < 2;
+
+  const previous = executionIconButton("Previous variant", "pager-prev");
+  previous.disabled = disabled;
+
+  const label = document.createElement("span");
+  label.className = "variant-count";
+  label.textContent = `${variants.length ? current + 1 : 1} / ${Math.max(variants.length, 1)}`;
+
+  const next = executionIconButton("Next variant", "pager-next");
+  next.disabled = disabled;
+
+  pager.append(previous, label, next);
+  return pager;
+}
+
+function executionIconButton(label, action) {
+  const button = document.createElement("button");
+  button.className = "message-exec-button toolbar-btn";
+  button.type = "button";
+  button.title = label;
+  button.setAttribute("aria-label", label);
+  button.dataset.action = action;
+  button.innerHTML = messageActionIcon(action);
+  return button;
+}
+
+function messageActionIcon(icon) {
+  const icons = {
+    retry:
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6v5h-5"/><path d="M4 18v-5h5"/><path d="M19 11a7 7 0 0 0-12.1-4.8L4 9"/><path d="M5 13a7 7 0 0 0 12.1 4.8L20 15"/></svg>',
+    "pager-prev":
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>',
+    "pager-next":
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>',
+    continue:
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 5 8 7-8 7V5Z"/><path d="M16 5v14"/></svg>',
+    suggest:
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M8.6 15.4a6 6 0 1 1 6.8 0c-.6.4-.9 1-.9 1.6h-5c0-.6-.3-1.2-.9-1.6Z"/><path d="M12 3V2"/><path d="m4.9 5 .7.7"/><path d="m19.1 5-.7.7"/></svg>',
+  };
+  return icons[icon] || icons.suggest;
+}
+
+function handleMessageExecutionPointerDown(event) {
+  const button = event.target.closest(".toolbar-btn");
+  if (!button || !el.chatMessages.contains(button)) {
+    return;
+  }
+  event.preventDefault();
+  event.stopPropagation();
+  dispatchMessageExecutionAction(button);
+}
+
+function handleMessageExecutionClick(event) {
+  const button = event.target.closest(".toolbar-btn");
+  if (!button || !el.chatMessages.contains(button)) {
+    return;
+  }
+  event.preventDefault();
+  event.stopPropagation();
+  if (event.detail !== 0) {
+    return;
+  }
+  dispatchMessageExecutionAction(button);
+}
+
+function dispatchMessageExecutionAction(button) {
+  if (button.disabled || state.streaming) {
+    return;
+  }
+  const row = button.closest(".message-row");
+  if (!row) {
+    return;
+  }
+  const messageId = row.dataset.messageId || "";
+  const message = findMessage(messageId);
+  if (!message || message.role !== "assistant") {
+    return;
+  }
+
+  const action = button.dataset.action;
+  if (action === "retry") {
+    retryAssistantMessage(messageId);
+  } else if (action === "pager-prev") {
+    selectAssistantVariant(messageId, (message.variant_index || 0) - 1);
+  } else if (action === "pager-next") {
+    selectAssistantVariant(messageId, (message.variant_index || 0) + 1);
+  } else if (action === "continue") {
+    continueAssistantMessage(messageId);
+  } else if (action === "suggest") {
+    suggestUserReply(messageId);
+  }
+}
+
+async function retryAssistantMessage(messageId) {
+  if (state.streaming || !state.activeCharacter?.id) {
+    return;
+  }
+  const index = findMessageIndex(messageId);
+  const message = state.messages[index];
+  if (!message || message.role !== "assistant") {
+    return;
+  }
+  const variants = ensureAssistantVariants(message);
+  const previousContent = message.content;
+  message.content = "";
+  message.action_status = "Reforging reply...";
+  setBusy(true);
+  state.streaming = true;
+  renderSessionMessages();
+  try {
+    const context = generationContextBefore(index);
+    const text = await requestAssistantText(context);
+    if (!text) {
+      throw new Error("The model returned an empty retry.");
+    }
+    delete message.action_status;
+    variants.push({ content: text, timestamp: new Date().toISOString() });
+    message.variant_index = variants.length - 1;
+    message.content = text;
+    message.timestamp = new Date().toISOString();
+    renderSessionMessages();
+    await persistActiveChat();
+  } catch (error) {
+    delete message.action_status;
+    message.content = previousContent;
+    renderSessionMessages();
+    console.error(error);
+  } finally {
+    state.streaming = false;
+    setBusy(false);
+    renderSessionMessages();
+  }
+}
+
+async function selectAssistantVariant(messageId, requestedIndex) {
+  const message = findMessage(messageId);
+  if (!message || message.role !== "assistant") {
+    return;
+  }
+  const variants = ensureAssistantVariants(message);
+  if (variants.length < 2) {
+    return;
+  }
+  const nextIndex = (requestedIndex + variants.length) % variants.length;
+  message.variant_index = nextIndex;
+  message.content = variants[nextIndex].content;
+  message.timestamp = variants[nextIndex].timestamp || new Date().toISOString();
+  renderSessionMessages();
+  await persistActiveChat();
+}
+
+async function continueAssistantMessage(messageId) {
+  if (state.streaming || !state.activeCharacter?.id) {
+    return;
+  }
+  const index = findMessageIndex(messageId);
+  const message = state.messages[index];
+  if (!message || message.role !== "assistant") {
+    return;
+  }
+  ensureAssistantVariants(message);
+  const activeVariantIndex = Math.max(0, message.variant_index || 0);
+  const previousContent = message.content;
+  message.action_status = "Continuing the thread...";
+  setBusy(true);
+  state.streaming = true;
+  renderSessionMessages();
+  try {
+    const context = state.messages.slice(0, index + 1).map(cloneMessageForGeneration);
+    context.push({
+      id: createMessageId(),
+      role: "user",
+      content:
+        "Continue the assistant's previous message from exactly where it stopped. Do not restart, summarize, or add user dialogue. Return only the continuation.",
+      timestamp: new Date().toISOString(),
+    });
+    const text = await requestAssistantText(context, {
+      maxTokens: Math.min(Number(el.maxTokens.value) || 512, 768),
+    });
+    if (!text) {
+      throw new Error("The model returned an empty continuation.");
+    }
+    delete message.action_status;
+    message.content = joinContinuation(previousContent, text);
+    message.timestamp = new Date().toISOString();
+    message.variants[activeVariantIndex] = {
+      content: message.content,
+      timestamp: message.timestamp,
+    };
+    message.variant_index = activeVariantIndex;
+    renderSessionMessages();
+    await persistActiveChat();
+  } catch (error) {
+    delete message.action_status;
+    message.content = previousContent;
+    renderSessionMessages();
+    console.error(error);
+  } finally {
+    state.streaming = false;
+    setBusy(false);
+    renderSessionMessages();
+  }
+}
+
+async function suggestUserReply(messageId) {
+  if (state.streaming || !state.activeCharacter?.id) {
+    return;
+  }
+  const index = findMessageIndex(messageId);
+  if (index < 0) {
+    return;
+  }
+  setBusy(true);
+  state.streaming = true;
+  const originalPlaceholder = el.messageInput.placeholder;
+  el.messageInput.placeholder = "Divining a possible reply...";
+  try {
+    const context = state.messages.slice(0, index + 1).map(cloneMessageForGeneration);
+    context.push({
+      id: createMessageId(),
+      role: "user",
+      content:
+        "Based on the roleplay conversation so far, suggest one natural next message for the user to send. Return only the user's suggested message, with no labels, notes, or quotation marks.",
+      timestamp: new Date().toISOString(),
+    });
+    const text = await requestAssistantText(context, {
+      maxTokens: 160,
+      temperature: Math.max(Number(el.temperature.value) || 0.7, 0.75),
+    });
+    const suggestion = cleanSuggestedReply(text);
+    if (suggestion) {
+      el.messageInput.value = suggestion;
+      autosizeComposer();
+      el.messageInput.focus();
+    }
+    await persistActiveChat();
+  } catch (error) {
+    console.error(error);
+  } finally {
+    el.messageInput.placeholder = originalPlaceholder;
+    state.streaming = false;
+    setBusy(false);
+  }
+}
+
+function generationContextBefore(index) {
+  const context = state.messages.slice(0, index).map(cloneMessageForGeneration);
+  if (context.length) {
+    return context;
+  }
+  return [
+    {
+      id: createMessageId(),
+      role: "user",
+      content:
+        "Begin the conversation with a fresh in-character opening response for the active character.",
+      timestamp: new Date().toISOString(),
+    },
+  ];
+}
+
+function cloneMessageForGeneration(message) {
+  return {
+    id: message.id || createMessageId(),
+    role: message.role,
+    content: message.content,
+    timestamp: message.timestamp || new Date().toISOString(),
+  };
+}
+
+async function requestAssistantText(messages, options = {}) {
+  const result = await completeAssistantResponse(
+    buildChatPayload({
+      messages,
+      maxTokens: options.maxTokens,
+      temperature: options.temperature,
+      topP: options.topP,
+    })
+  );
+  state.activeChatId = result.chat_id || state.activeChatId;
+  return String(result.text || "").trim();
+}
+
+function joinContinuation(base, continuation) {
+  const head = String(base || "").trimEnd();
+  const tail = String(continuation || "").trimStart();
+  if (!head) {
+    return tail;
+  }
+  if (!tail) {
+    return head;
+  }
+  return /[\s("'[{]$/.test(head) || /^[,.;:!?)\]}]/.test(tail)
+    ? `${head}${tail}`
+    : `${head} ${tail}`;
+}
+
+function cleanSuggestedReply(text) {
+  return String(text || "")
+    .trim()
+    .replace(/^["'“”]+|["'“”]+$/g, "")
+    .replace(/^(user|you)\s*:\s*/i, "")
+    .trim();
 }
 
 function renderMessageEditor(body, message) {
@@ -3666,6 +4059,9 @@ async function saveMessageEdit(messageId, value) {
   }
   message.content = content;
   message.timestamp = new Date().toISOString();
+  if (message.role === "assistant") {
+    updateActiveAssistantVariant(message);
+  }
   state.editingMessageId = null;
   renderSessionMessages();
   await persistActiveChat();
@@ -3787,6 +4183,10 @@ function findMessage(messageId) {
   return state.messages.find((message) => message.id === messageId);
 }
 
+function findMessageIndex(messageId) {
+  return state.messages.findIndex((message) => message.id === messageId);
+}
+
 function ensureClientMessage(message) {
   if (!message.id) {
     message.id = createMessageId();
@@ -3796,7 +4196,66 @@ function ensureClientMessage(message) {
   }
   message.folded = Boolean(message.folded);
   message.hidden = Boolean(message.hidden);
+  if (message.role === "assistant") {
+    ensureAssistantVariants(message);
+  }
   return message;
+}
+
+function ensureAssistantVariants(message) {
+  if (!message || message.role !== "assistant") {
+    return [];
+  }
+  const variants = Array.isArray(message.variants)
+    ? message.variants
+        .map((variant) =>
+          typeof variant === "string"
+            ? { content: variant, timestamp: message.timestamp || new Date().toISOString() }
+            : {
+                content: String(variant?.content || ""),
+                timestamp: variant?.timestamp || message.timestamp || new Date().toISOString(),
+              }
+        )
+        .filter((variant) => variant.content.trim())
+    : [];
+
+  const currentContent = String(message.content || "").trim();
+  let variantIndex = Number.isInteger(message.variant_index) ? message.variant_index : -1;
+  if (currentContent) {
+    const currentMatch = variants.findIndex((variant) => variant.content === message.content);
+    if (currentMatch >= 0) {
+      variantIndex = currentMatch;
+    } else {
+      variants.push({
+        content: message.content,
+        timestamp: message.timestamp || new Date().toISOString(),
+      });
+      variantIndex = variants.length - 1;
+    }
+  }
+
+  if (!variants.length) {
+    variantIndex = 0;
+  } else if (variantIndex < 0 || variantIndex >= variants.length) {
+    variantIndex = variants.length - 1;
+  }
+
+  message.variants = variants;
+  message.variant_index = variantIndex;
+  return variants;
+}
+
+function updateActiveAssistantVariant(message) {
+  const variants = ensureAssistantVariants(message);
+  if (!variants.length) {
+    return;
+  }
+  const index = Math.max(0, Math.min(message.variant_index || 0, variants.length - 1));
+  variants[index] = {
+    content: message.content,
+    timestamp: message.timestamp || new Date().toISOString(),
+  };
+  message.variant_index = index;
 }
 
 function createMessageId() {
@@ -3877,7 +4336,9 @@ function removeThinkingIndicator() {
 
 function clearChat() {
   state.activeChatId = null;
-  el.chatHistorySelect.value = "";
+  if (el.chatHistorySelect) {
+    el.chatHistorySelect.value = "";
+  }
   state.selectedMessageIds.clear();
   state.editingMessageId = null;
   if (!state.activeCharacter?.id) {

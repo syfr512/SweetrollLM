@@ -11,7 +11,7 @@
     <meta property="og:type" content="website" />
     <meta property="og:title" content="SweetrollLM - Local AI Roleplay Client" />
     <meta property="og:description" content="A polished local AI client blending SillyTavern character depth with LM Studio-style GGUF model management and adaptive koboldcpp fallback routing." />
-    <meta property="og:url" content="https://github.com/syfr512/Local-Tavern" />
+    <meta property="og:url" content="https://github.com/syfr512/SweetrollLM" />
     <meta property="og:site_name" content="SweetrollLM" />
     <meta property="og:image" content="/static/assets/icon.png" />
     <title>SweetrollLM</title>
@@ -20,15 +20,15 @@
     <meta name="msapplication-TileImage" content="/static/assets/icon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/static/css/tailwind.css?v=transparency-hotfix-20260613" />
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Crimson+Pro:wght@400;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/static/css/tailwind.css?v=cinzel-crimson-typography-20260613" />
     <script defer src="/static/js/markdown.js"></script>
     <script defer src="/static/js/app.js?v=transparency-hotfix-20260613"></script>
   </head>
   <body>
     <div id="startupOverlay" class="startup-overlay" aria-live="polite">
       <div class="startup-card">
-        <div class="brand-mark startup-mark"><img src="/static/assets/icon.png" alt="SweetrollLM" /></div>
+        <div class="brand-mark startup-mark"><img src="/static/assets/icon.png" alt="SweetrollLM" onerror="this.hidden=true; this.parentElement.classList.add('brand-mark-fallback');" /></div>
         <p class="startup-quote">"Let me guess, someone stole your sweetroll?"</p>
         <div class="startup-loader" aria-hidden="true">
           <span></span>
@@ -42,7 +42,7 @@
     <div id="appShell" class="app-shell">
       <aside id="settingsSidebar" class="sidebar">
         <div class="brand-row">
-          <div class="brand-mark"><img src="/static/assets/icon.png" alt="SweetrollLM" /></div>
+          <div class="brand-mark"><img src="/static/assets/icon.png" alt="SweetrollLM" onerror="this.hidden=true; this.parentElement.classList.add('brand-mark-fallback');" /></div>
           <div class="brand-copy">
             <h1>SweetrollLM</h1>
             <p id="connectionStatus">Starting</p>
@@ -71,188 +71,216 @@
           </button>
         </div>
 
-        <section class="panel">
-          <div class="panel-title">
-            <h2>Inference Source</h2>
+        <section class="panel accordion-section" data-accordion-section data-accordion-key="inference">
+          <div class="panel-title accordion-title">
+            <button class="section-toggle" type="button" data-accordion-toggle aria-expanded="true">
+              <span class="accordion-arrow" aria-hidden="true">▾</span>
+              <span>Inference Source</span>
+            </button>
             <span id="sourceBadge" class="badge badge-local">Local</span>
           </div>
-          <select id="inferenceSource" class="input">
-            <option value="local">Local Engine Mode</option>
-            <option value="cloud">Cloud API Mode</option>
-          </select>
+          <div class="accordion-body" data-accordion-body>
+            <select id="inferenceSource" class="input">
+              <option value="local">Local Engine Mode</option>
+              <option value="cloud">Cloud API Mode</option>
+            </select>
+            <div id="sidebarLocalModelPanel" class="sidebar-local-model-panel">
+              <div class="subsection-title">
+                <h3>Local Model</h3>
+                <button id="sidebarRefreshModels" class="ghost-button" type="button">Scan</button>
+              </div>
+              <div class="active-model-row">
+                <span id="sidebarActiveModelDot" class="status-dot"></span>
+                <p id="sidebarModelStatus">No model loaded</p>
+              </div>
+              <label class="field">
+                <span>GGUF Model</span>
+                <select id="sidebarLocalModelPath" class="input"></select>
+              </label>
+              <div class="button-row">
+                <button id="sidebarLoadModel" class="primary-button" type="button">Load</button>
+                <button id="sidebarUnloadModel" class="secondary-button" type="button">Unload</button>
+              </div>
+              <p id="sidebarModelInlineError" class="inline-error hidden"></p>
+            </div>
+          </div>
         </section>
 
-        <section id="sidebarLocalModelPanel" class="panel sidebar-local-model-panel">
-          <div class="panel-title">
-            <h2>Local Model</h2>
-            <button id="sidebarRefreshModels" class="ghost-button" type="button">Scan</button>
-          </div>
-          <div class="active-model-row">
-            <span id="sidebarActiveModelDot" class="status-dot"></span>
-            <p id="sidebarModelStatus">No model loaded</p>
-          </div>
-          <label class="field">
-            <span>GGUF Model</span>
-            <select id="sidebarLocalModelPath" class="input"></select>
-          </label>
-          <div class="button-row">
-            <button id="sidebarLoadModel" class="primary-button" type="button">Load</button>
-            <button id="sidebarUnloadModel" class="secondary-button" type="button">Unload</button>
-          </div>
-          <p id="sidebarModelInlineError" class="inline-error hidden"></p>
-        </section>
-
-        <section id="cloudPanel" class="panel hidden">
-          <div class="panel-title">
-            <h2>Cloud API</h2>
+        <section id="cloudPanel" class="panel accordion-section hidden" data-accordion-section data-accordion-key="cloud">
+          <div class="panel-title accordion-title">
+            <button class="section-toggle" type="button" data-accordion-toggle aria-expanded="true">
+              <span class="accordion-arrow" aria-hidden="true">▾</span>
+              <span>Cloud API</span>
+            </button>
             <span class="badge">Online</span>
           </div>
-          <label class="field">
-            <span>Active Registry Profile</span>
-            <select id="apiProviderSelect" class="input" data-cloud-field>
-              <option value="">Manual Cloud Fields</option>
-            </select>
-          </label>
-          <div id="apiProviderList" class="provider-list"></div>
-          <div class="panel-title">
-            <h2>Provider Editor</h2>
-            <button id="newApiProvider" class="ghost-button" type="button">New</button>
-          </div>
-          <label class="field">
-            <span>Profile Name</span>
-            <input id="apiProviderName" class="input" data-cloud-field value="OpenRouter Main" />
-          </label>
-          <label class="field">
-            <span>Provider Type</span>
-            <select id="cloudProvider" class="input" data-cloud-field>
-              <option value="openai">OpenAI</option>
-              <option value="openrouter">OpenRouter</option>
-              <option value="custom">Custom</option>
-            </select>
-          </label>
-          <label class="field">
-            <span>Base URL</span>
-            <input id="baseUrl" class="input" data-cloud-field value="https://api.openai.com/v1" />
-          </label>
-          <label class="field">
-            <span>Model</span>
-            <select id="cloudModelSelect" class="input" data-cloud-field></select>
-            <input id="cloudModel" class="input hidden" data-cloud-field placeholder="Custom model slug" />
-          </label>
-          <label class="field">
-            <span>API Key</span>
-            <input id="apiKey" class="input" data-cloud-field type="password" autocomplete="off" />
-          </label>
-          <label class="toggle-row switch-row">
-            <input id="apiProviderDefault" type="checkbox" data-cloud-field />
-            <span>Set as Active Default</span>
-          </label>
-          <label class="toggle-row switch-row">
-            <input id="apiProviderFallback" type="checkbox" data-cloud-field />
-            <span>Use as Alternate Fallback</span>
-          </label>
-          <div class="button-row">
-            <button id="testApiProvider" class="secondary-button" type="button">Connect &amp; Test</button>
-            <button id="saveApiProvider" class="primary-button" type="button">Save Provider</button>
-            <button id="deleteApiProvider" class="secondary-button danger-button" type="button">Delete</button>
-          </div>
-          <p id="apiProviderStatus" class="muted">Saved providers are local to storage/api_providers.json.</p>
-        </section>
-
-        <section class="panel">
-          <div class="panel-title">
-            <h2>Generation</h2>
-          </div>
-          <label class="field">
-            <span>App Theme</span>
-            <select id="appTheme" class="input">
-              <option value="aurora-dark">Aurora Dark</option>
-              <option value="sweetroll-light">Sweetroll Light</option>
-            </select>
-          </label>
-          <div class="field background-picker-row">
-            <span>Global Chat Background</span>
-            <div class="button-row compact-actions">
-              <button id="selectGlobalBackground" class="secondary-button" type="button">Browse</button>
-              <button id="clearGlobalBackground" class="ghost-button" type="button">Clear</button>
+          <div class="accordion-body" data-accordion-body>
+            <label class="field">
+              <span>Active Registry Profile</span>
+              <select id="apiProviderSelect" class="input" data-cloud-field>
+                <option value="">Manual Cloud Fields</option>
+              </select>
+            </label>
+            <div id="apiProviderList" class="provider-list"></div>
+            <div class="subsection-title">
+              <h3>Provider Editor</h3>
+              <button id="newApiProvider" class="ghost-button" type="button">New</button>
             </div>
-            <input id="globalBgFileInput" type="file" accept="image/*" class="hidden" />
-            <p id="globalBackgroundStatus" class="muted path-preview">Theme default active.</p>
-          </div>
-          <div class="two-col">
             <label class="field">
-              <span>Temperature</span>
-              <input id="temperature" class="input" type="number" value="0.7" min="0" max="2" step="0.05" />
+              <span>Profile Name</span>
+              <input id="apiProviderName" class="input" data-cloud-field value="OpenRouter Main" />
             </label>
             <label class="field">
-              <span>Top P</span>
-              <input id="topP" class="input" type="number" value="0.9" min="0" max="1" step="0.05" />
+              <span>Provider Type</span>
+              <select id="cloudProvider" class="input" data-cloud-field>
+                <option value="openai">OpenAI</option>
+                <option value="openrouter">OpenRouter</option>
+                <option value="custom">Custom</option>
+              </select>
             </label>
+            <label class="field">
+              <span>Base URL</span>
+              <input id="baseUrl" class="input" data-cloud-field value="https://api.openai.com/v1" />
+            </label>
+            <label class="field">
+              <span>Model</span>
+              <select id="cloudModelSelect" class="input" data-cloud-field></select>
+              <input id="cloudModel" class="input hidden" data-cloud-field placeholder="Custom model slug" />
+            </label>
+            <label class="field">
+              <span>API Key</span>
+              <input id="apiKey" class="input" data-cloud-field type="password" autocomplete="off" />
+            </label>
+            <label class="toggle-row switch-row">
+              <input id="apiProviderDefault" type="checkbox" data-cloud-field />
+              <span>Set as Active Default</span>
+            </label>
+            <label class="toggle-row switch-row">
+              <input id="apiProviderFallback" type="checkbox" data-cloud-field />
+              <span>Use as Alternate Fallback</span>
+            </label>
+            <div class="button-row provider-actions">
+              <button id="testApiProvider" class="secondary-button" type="button">Connect &amp; Test</button>
+              <button id="saveApiProvider" class="primary-button" type="button">Save Provider</button>
+              <button id="deleteApiProvider" class="secondary-button danger-button icon-only-button" type="button" title="Delete provider" aria-label="Delete provider">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M9 4h6l1 2h4" />
+                  <path d="M4 6h16" />
+                  <path d="M7 6l1 14h8l1-14" />
+                  <path d="M10 10v6" />
+                  <path d="M14 10v6" />
+                </svg>
+              </button>
+            </div>
+            <p id="apiProviderStatus" class="muted">Saved providers are local to storage/api_providers.json.</p>
           </div>
-          <label class="field">
-            <span>Max Tokens</span>
-            <input id="maxTokens" class="input" type="number" value="512" min="1" max="8192" />
-          </label>
-          <label class="toggle-row switch-row">
-            <input id="textStreaming" type="checkbox" checked />
-            <span>Text Streaming</span>
-          </label>
-          <label class="toggle-row switch-row">
-            <input id="characterBackgrounds" type="checkbox" checked />
-            <span>Character Chat Backgrounds</span>
-          </label>
-          <label class="field">
-            <span>Chat Transparency <strong id="chatTransparencyValue">82%</strong></span>
-            <input id="chatTransparency" class="range-input" type="range" min="10" max="100" step="5" value="82" />
-          </label>
-          <label class="field">
-            <span>Background Opacity <strong id="backgroundOpacityValue">90%</strong></span>
-            <input id="backgroundOpacitySlider" class="range-input" type="range" min="0" max="100" step="5" value="90" />
-          </label>
-          <button id="resetSetupWizard" class="secondary-button" type="button">Reset Setup Wizard</button>
         </section>
 
-        <section class="panel">
-          <div class="panel-title">
-            <h2>User Persona</h2>
-            <button id="openPersonaRegistry" class="ghost-button" type="button">Personas</button>
+        <section class="panel accordion-section" data-accordion-section data-accordion-key="generation" data-accordion-default-collapsed="true">
+          <div class="panel-title accordion-title">
+            <button class="section-toggle" type="button" data-accordion-toggle aria-expanded="false">
+              <span class="accordion-arrow" aria-hidden="true">▸</span>
+              <span>Generation</span>
+            </button>
           </div>
-          <label class="field">
-            <span>Active Persona</span>
-            <select id="personaSelect" class="input">
-              <option value="">Default Persona</option>
-            </select>
-          </label>
+          <div class="accordion-body" data-accordion-body>
+            <label class="field">
+              <span>App Theme</span>
+              <select id="appTheme" class="input">
+                <option value="aurora-dark">Aurora Dark</option>
+                <option value="sweetroll-light">Sweetroll Light</option>
+              </select>
+            </label>
+            <div class="field background-picker-row">
+              <span>Global Chat Background</span>
+              <div class="button-row compact-actions">
+                <button id="selectGlobalBackground" class="secondary-button" type="button">Browse</button>
+                <button id="clearGlobalBackground" class="ghost-button" type="button">Clear</button>
+              </div>
+              <input id="globalBgFileInput" type="file" accept="image/*" class="hidden" />
+              <p id="globalBackgroundStatus" class="muted path-preview">Theme default active.</p>
+            </div>
+            <label class="field">
+              <span>Max Tokens</span>
+              <input id="maxTokens" class="input" type="number" value="512" min="1" max="8192" />
+            </label>
+            <div class="two-col">
+              <label class="field">
+                <span>Temperature</span>
+                <input id="temperature" class="input" type="number" value="0.7" min="0" max="2" step="0.05" />
+              </label>
+              <label class="field">
+                <span>Top P</span>
+                <input id="topP" class="input" type="number" value="0.9" min="0" max="1" step="0.05" />
+              </label>
+            </div>
+            <label class="toggle-row switch-row">
+              <input id="textStreaming" type="checkbox" checked />
+              <span>Text Streaming</span>
+            </label>
+            <label class="toggle-row switch-row">
+              <input id="characterBackgrounds" type="checkbox" checked />
+              <span>Character Chat Backgrounds</span>
+            </label>
+            <label class="field">
+              <span>Chat Transparency <strong id="chatTransparencyValue">82%</strong></span>
+              <input id="chatTransparency" class="range-input" type="range" min="10" max="100" step="5" value="82" />
+            </label>
+            <label class="field">
+              <span>Background Opacity <strong id="backgroundOpacityValue">90%</strong></span>
+              <input id="backgroundOpacitySlider" class="range-input" type="range" min="0" max="100" step="5" value="90" />
+            </label>
+            <button id="resetSetupWizard" class="secondary-button compact-wide-button" type="button">Reset Setup</button>
+          </div>
         </section>
 
-        <section class="panel panel-grow">
-          <div class="panel-title">
-            <h2>Characters</h2>
+        <section class="panel panel-grow accordion-section session-accordion" data-accordion-section data-accordion-key="sessions">
+          <div class="panel-title accordion-title">
+            <button class="section-toggle" type="button" data-accordion-toggle aria-expanded="true">
+              <span class="accordion-arrow" aria-hidden="true">▾</span>
+              <span>Characters &amp; Chats</span>
+            </button>
             <button id="editCurrentCharacter" class="ghost-button" type="button">Cards</button>
           </div>
-          <input id="characterName" type="hidden" value="" />
-          <input id="characterAvatar" type="hidden" />
-          <div id="characterAvatarPreview" class="avatar avatar-large hidden">A</div>
-          <div id="sidebarCharacterList" class="sidebar-card-list">
-            <div class="empty-state compact-empty">No saved character cards yet.</div>
-          </div>
-          <div class="panel-title shelf-title">
-            <h2>Past Chats</h2>
-            <div class="button-row compact-actions">
-              <button id="toggleHistoryShelf" class="ghost-button" type="button" aria-expanded="true">Hide</button>
-              <button id="newChatSidebar" class="ghost-button" type="button">New</button>
+          <div class="accordion-body" data-accordion-body>
+            <div class="sidebar-subsection">
+              <div class="subsection-title">
+                <h3>User Persona</h3>
+                <button id="openPersonaRegistry" class="ghost-button" type="button">Personas</button>
+              </div>
+              <label class="field">
+                <span>Active Persona</span>
+                <select id="personaSelect" class="input">
+                  <option value="">Default Persona</option>
+                </select>
+              </label>
             </div>
-          </div>
-          <div id="chatHistoryShelf" class="history-shelf">
-            <div class="empty-state compact-empty">Select a character to see timelines.</div>
-          </div>
-          <label class="field fill">
-            <span>System Prompt</span>
-            <textarea id="systemPrompt" class="input textarea" placeholder="Optional system prompt for the active character"></textarea>
-          </label>
-          <div class="active-model-row">
-            <span id="activeLorebookDot" class="status-dot"></span>
-            <p id="activeLorebookStatus">No active lorebook</p>
+            <div class="sidebar-subsection">
+              <input id="characterName" type="hidden" value="" />
+              <input id="characterAvatar" type="hidden" />
+              <div id="characterAvatarPreview" class="avatar avatar-large hidden">A</div>
+              <div id="sidebarCharacterList" class="sidebar-card-list">
+                <div class="empty-state compact-empty">No saved character cards yet.</div>
+              </div>
+            </div>
+            <div class="subsection-title shelf-title">
+              <h3>Past Chats</h3>
+              <div class="button-row compact-actions">
+                <button id="toggleHistoryShelf" class="ghost-button" type="button" aria-expanded="true">Hide</button>
+                <button id="newChatSidebar" class="ghost-button" type="button">New</button>
+              </div>
+            </div>
+            <div id="chatHistoryShelf" class="history-shelf">
+              <div class="empty-state compact-empty">Select a character to see timelines.</div>
+            </div>
+            <label class="field fill system-prompt-field">
+              <span>System Prompt</span>
+              <textarea id="systemPrompt" class="input textarea" rows="3" placeholder="Optional system prompt for the active character"></textarea>
+            </label>
+            <div class="active-model-row">
+              <span id="activeLorebookDot" class="status-dot"></span>
+              <p id="activeLorebookStatus">No active lorebook</p>
+            </div>
           </div>
         </section>
       </aside>
@@ -277,9 +305,6 @@
             <button id="toggleExtensions" class="secondary-button" type="button" aria-expanded="false" aria-controls="extensionsDrawer">Extensions</button>
             <button id="openConsoleLogs" class="secondary-button" type="button">View Console Logs</button>
             <button id="newChat" class="secondary-button" type="button">New Chat</button>
-            <select id="chatHistorySelect" class="input session-select" title="Past chats">
-              <option value="">Past Chats</option>
-            </select>
             <button id="exportChat" class="secondary-button" type="button">Export Logs</button>
             <button id="deleteChat" class="secondary-button danger-button" type="button">Delete Entire Chat</button>
             <button id="clearChat" class="secondary-button" type="button">Clear Chat</button>
