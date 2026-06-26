@@ -10,16 +10,33 @@ SweetrollLM blends the character-card and lorebook comfort of SillyTavern with t
 
 ### First-Run Setup Wizard
 
-![SweetrollLM first-run setup wizard](docs/screenshots/sweetroll-home.png)
+![SweetrollLM first-run setup wizard](docs/screenshots/setup-wizard.png)
+
+### Default Chat Home
+
+![SweetrollLM default chat home](docs/screenshots/default-chat-home.png)
+
+### Character Chat With Avatar Backdrop
+
+![SweetrollLM character chat with avatar backdrop and image attachment](docs/screenshots/character-chat-backdrop.png)
+
+### Agentic Workspace
+
+![SweetrollLM Agentic Workspace](docs/screenshots/workspace-agent.png)
+
+### Model Marketplace
+
+![SweetrollLM model marketplace](docs/screenshots/model-marketplace.png)
 
 ### Future Gallery Slots
 
 Drop additional project media here as the UI evolves:
 
-- `docs/screenshots/character-chat.png` - character chat with avatar backdrop and gallery.
-- `docs/screenshots/home-after-setup.png` - default chat screen after onboarding.
-- `docs/screenshots/workspace-agent.png` - Agentic Workspace running a file or terminal task.
-- `docs/screenshots/model-marketplace.png` - GGUF marketplace and local model manager.
+- `docs/screenshots/character-chat-gallery.png` - character chat gallery and per-chat summary settings.
+- `docs/screenshots/image-captioning-chat.png` - chat-native image captioning in action.
+- `docs/screenshots/workspace-tools-running.png` - workspace agent executing file or terminal tools.
+- `docs/screenshots/settings-providers.png` - provider, vision, SMTP, and theme configuration.
+- `docs/screenshots/cookbook-download.png` - GGUF cookbook search and download flow.
 - `docs/media/demo-chat-flow.gif` - chat-native image attachment and auto-summary flow.
 - `docs/media/workspace-demo.mp4` - workspace automation or coding session walkthrough.
 
