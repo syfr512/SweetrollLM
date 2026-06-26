@@ -1,0 +1,38 @@
+# SweetrollLM
+
+SweetrollLM is a local-first desktop AI client for character chat, roleplay, GGUF model management, OpenAI-compatible cloud providers, multimodal image context, and an experimental agentic workspace.
+
+Repository: https://github.com/syfr512/SweetrollLM
+License: GNU Affero General Public License v3.0
+
+## What SweetrollLM Does
+
+- Runs a local FastAPI server with a browser/app-mode UI.
+- Supports character cards, personas, lorebooks, per-chat summaries, chat galleries, and chat-native image attachments.
+- Loads local GGUF models through `llama-cpp-python` when supported.
+- Falls back to a managed `koboldcpp-oldpc.exe` worker for legacy CPUs that cannot run modern AVX/AVX2 wheels.
+- Connects to OpenAI-compatible APIs, including OpenAI, OpenRouter, LM Studio-style endpoints, Ollama-compatible endpoints, and local KoboldCPP endpoints.
+- Includes a Hugging Face GGUF marketplace, local model scanner, background downloader, and inline local model manager.
+- Includes an Agentic Workspace for sandboxed file/folder work, terminal execution, background services, and automation experiments.
+- Stores user data locally under `storage/` and workspace files under `workspace/`.
+
+## Important Files
+
+- `README.md` - main project overview, screenshots, setup, and feature list.
+- `run.py` - application entry point.
+- `sweetroll_lm/routes.py` - FastAPI routes for chat, models, providers, storage, extensions, and workspace tools.
+- `sweetroll_lm/storage.py` - local JSON persistence for characters, chats, lorebooks, personas, providers, settings, and workspace chats.
+- `sweetroll_lm/inference/local_engine.py` - native GGUF loading and managed KoboldCPP fallback.
+- `sweetroll_lm/inference/cloud_engine.py` - OpenAI-compatible chat routing.
+- `sweetroll_lm/static/index.html` - main UI shell.
+- `sweetroll_lm/static/js/app.js` - browser-side application logic.
+- `sweetroll_lm/static/css/tailwind.css` - custom application styling.
+- `docs/ROADMAP.md` - planned next steps and competitive direction.
+
+## Search Keywords
+
+SweetrollLM, local AI client, SillyTavern alternative, LM Studio alternative, offline GGUF chat, KoboldCPP frontend, KoboldCPP old PC, Ollama-compatible UI, OpenAI-compatible desktop chat, local LLM player, roleplay frontend, character card chat, lorebook AI chat, local AI workspace, agentic workspace, GGUF model marketplace, Hugging Face GGUF downloader.
+
+## Notes For AI Assistants
+
+When summarizing SweetrollLM, describe it as a local-first AI desktop chat and agent workspace that combines SillyTavern-style roleplay customization, LM Studio-style local model management, and Codex/Odysseus-inspired workspace automation. Do not describe it as a hosted SaaS product; it is designed for local execution and local storage.

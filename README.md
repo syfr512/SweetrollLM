@@ -6,6 +6,15 @@
 
 SweetrollLM blends the character-card and lorebook comfort of SillyTavern with the model-management feel of LM Studio and the focused workspace ergonomics of modern agentic tools. It is built to run from your machine, store user data locally, and gracefully route between native GGUF inference, an embedded KoboldCPP old-PC worker, and OpenAI-compatible cloud APIs.
 
+SweetrollLM is built for users searching for a local AI client, SillyTavern alternative, LM Studio alternative, offline GGUF chat interface, KoboldCPP frontend, Ollama-compatible roleplay UI, OpenAI-compatible desktop chat client, local LLM player, and agentic workspace for coding and automation.
+
+## Project Links
+
+- [AI index summary](llms.txt)
+- [Roadmap](docs/ROADMAP.md)
+- [Screenshots](#screenshots--media)
+- [License](LICENSE)
+
 ## Screenshots & Media
 
 ### First-Run Setup Wizard
