@@ -4,17 +4,16 @@ SweetrollLM is aiming to become a local-first alternative for users who want the
 
 This roadmap keeps the project direction public and easy to index.
 
-## 1. First-Class Ollama Support
+## 1. Deeper Ollama Support
 
-Ollama support is a strong next step.
+SweetrollLM now includes first-class Ollama sidecar support for detecting a local Ollama server, listing installed models, validating the OpenAI-compatible chat endpoint, pulling models, and registering Ollama as a saved provider profile.
 
-Current SweetrollLM behavior can already connect to OpenAI-compatible local endpoints, including Ollama's `/v1` compatibility layer. First-class Ollama support should make that workflow automatic:
+The next step is making the Ollama workflow richer:
 
-- Detect a running Ollama server at `http://127.0.0.1:11434`.
-- List installed Ollama models from `/api/tags`.
-- Pull models through `ollama pull`.
-- Start, stop, and switch models without manual endpoint setup.
 - Show model context, size, family, quantization, and parameter metadata.
+- Start, stop, and switch models without manual endpoint setup where the local environment allows it.
+- Surface pull progress in the same style as the Hugging Face GGUF downloader.
+- Recommend Ollama models by hardware tier.
 - Route chat, vision, and workspace tasks through Ollama where model capability allows.
 
 This would make SweetrollLM easier for users who do not want to manage GGUF files manually.

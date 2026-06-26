@@ -219,6 +219,7 @@
               <select id="cloudProvider" class="input" data-cloud-field>
                 <option value="openai">OpenAI</option>
                 <option value="openrouter">OpenRouter</option>
+                <option value="ollama">Ollama / Local</option>
                 <option value="custom">Custom</option>
               </select>
             </label>
@@ -257,6 +258,30 @@
               </button>
             </div>
             <p id="apiProviderStatus" class="muted">Saved providers are local to storage/api_providers.json.</p>
+
+            <div class="ollama-card">
+              <div class="panel-title compact-title">
+                <div>
+                  <h3>Ollama Sidecar</h3>
+                  <p id="ollamaStatusText" class="muted">Detect a local Ollama runtime without changing llama.cpp support.</p>
+                </div>
+                <span id="ollamaStatusBadge" class="badge">Unknown</span>
+              </div>
+              <label class="field">
+                <span>Installed Ollama Model</span>
+                <select id="ollamaModelSelect" class="input"></select>
+              </label>
+              <label class="field">
+                <span>Pull Model</span>
+                <input id="ollamaPullModel" class="input" placeholder="llama3.2:1b, qwen2.5:3b, gemma3:4b" />
+              </label>
+              <div class="button-row compact-actions">
+                <button id="refreshOllama" class="secondary-button" type="button">Detect</button>
+                <button id="pullOllamaModel" class="secondary-button" type="button">Pull</button>
+                <button id="useOllamaProvider" class="primary-button" type="button">Use Ollama</button>
+              </div>
+              <p id="ollamaInlineStatus" class="muted">Ollama remains optional and runs beside native GGUF loading.</p>
+            </div>
           </div>
         </section>
 
@@ -754,6 +779,7 @@
                 <select id="setupProviderType" class="input">
                   <option value="openrouter">OpenRouter</option>
                   <option value="openai">ChatGPT / OpenAI</option>
+                  <option value="ollama">Ollama / Local</option>
                   <option value="custom">Custom</option>
                 </select>
               </label>

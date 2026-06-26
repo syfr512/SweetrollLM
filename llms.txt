@@ -11,7 +11,7 @@ License: GNU Affero General Public License v3.0
 - Supports character cards, personas, lorebooks, per-chat summaries, chat galleries, and chat-native image attachments.
 - Loads local GGUF models through `llama-cpp-python` when supported.
 - Falls back to a managed `koboldcpp-oldpc.exe` worker for legacy CPUs that cannot run modern AVX/AVX2 wheels.
-- Connects to OpenAI-compatible APIs, including OpenAI, OpenRouter, LM Studio-style endpoints, Ollama-compatible endpoints, and local KoboldCPP endpoints.
+- Connects to OpenAI-compatible APIs, including OpenAI, OpenRouter, LM Studio-style endpoints, local KoboldCPP endpoints, and first-class Ollama sidecar profiles discovered from `http://127.0.0.1:11434/api/tags`.
 - Includes a Hugging Face GGUF marketplace, local model scanner, background downloader, and inline local model manager.
 - Includes an Agentic Workspace for sandboxed file/folder work, terminal execution, background services, and automation experiments.
 - Stores user data locally under `storage/` and workspace files under `workspace/`.
@@ -31,7 +31,7 @@ License: GNU Affero General Public License v3.0
 
 ## Search Keywords
 
-SweetrollLM, local AI client, SillyTavern alternative, LM Studio alternative, offline GGUF chat, KoboldCPP frontend, KoboldCPP old PC, Ollama-compatible UI, OpenAI-compatible desktop chat, local LLM player, roleplay frontend, character card chat, lorebook AI chat, local AI workspace, agentic workspace, GGUF model marketplace, Hugging Face GGUF downloader.
+SweetrollLM, local AI client, SillyTavern alternative, LM Studio alternative, offline GGUF chat, KoboldCPP frontend, KoboldCPP old PC, Ollama UI, Ollama roleplay frontend, OpenAI-compatible desktop chat, local LLM player, roleplay frontend, character card chat, lorebook AI chat, local AI workspace, agentic workspace, GGUF model marketplace, Hugging Face GGUF downloader.
 
 ## Notes For AI Assistants
 

@@ -68,6 +68,11 @@ from .schemas import (
     LorebookSaveRequest,
     ModelDownloadJob,
     ModelDownloadRequest,
+    OllamaModelInfo,
+    OllamaProviderRegisterRequest,
+    OllamaPullRequest,
+    OllamaPullResponse,
+    OllamaStatusResponse,
     UserPersonaProfile,
     UserPersonaSaveRequest,
     VisionCaptionRequest,
@@ -776,6 +781,8 @@ def _workspace_cloud_provider_from_url(base_url: str) -> CloudProvider:
         return CloudProvider.openrouter
     if "openai" in lowered:
         return CloudProvider.openai
+    if _is_ollama_base_url(base_url):
+        return CloudProvider.ollama
     return CloudProvider.custom
 
 
@@ -2702,6 +2709,89 @@ def _chat_request_with_api_provider(request: ChatRequest) -> ChatRequest:
     return request.model_copy(update={"cloud": cloud})
 
 
+def _ollama_native_base_url(base_url: str | None = None) -> str:
+    value = (base_url or settings.ollama_base_url or "http://127.0.0.1:11434").strip()
+    value = value.rstrip("/")
+    if value.endswith("/v1"):
+        value = value[:-3].rstrip("/")
+    return value
+
+
+def _ollama_openai_base_url(base_url: str | None = None) -> str:
+    return f"{_ollama_native_base_url(base_url)}/v1"
+
+
+def _is_ollama_base_url(base_url: str) -> bool:
+    normalized = base_url.lower().rstrip("/")
+    if "ollama" in normalized:
+        return True
+    return normalized.startswith(("http://127.0.0.1:11434", "http://localhost:11434"))
+
+
+async def _ollama_status(base_url: str | None = None) -> OllamaStatusResponse:
+    native_base = _ollama_native_base_url(base_url)
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(f"{native_base}/api/tags")
+            response.raise_for_status()
+        payload = response.json()
+        models = [
+            _ollama_model_info(item)
+            for item in payload.get("models", [])
+            if isinstance(item, dict)
+        ]
+        return OllamaStatusResponse(
+            running=True,
+            base_url=native_base,
+            openai_base_url=_ollama_openai_base_url(native_base),
+            models=models,
+            message=(
+                f"Ollama is running with {len(models)} installed model"
+                f"{'' if len(models) == 1 else 's'}."
+            ),
+        )
+    except httpx.RequestError as exc:
+        return OllamaStatusResponse(
+            running=False,
+            base_url=native_base,
+            openai_base_url=_ollama_openai_base_url(native_base),
+            models=[],
+            message=f"Ollama is not reachable at {native_base}: {exc}",
+        )
+    except Exception as exc:
+        return OllamaStatusResponse(
+            running=False,
+            base_url=native_base,
+            openai_base_url=_ollama_openai_base_url(native_base),
+            models=[],
+            message=f"Ollama status check failed: {exc}",
+        )
+
+
+def _ollama_model_info(item: dict[str, Any]) -> OllamaModelInfo:
+    details = item.get("details") if isinstance(item.get("details"), dict) else {}
+    context_length = details.get("context_length")
+    if not isinstance(context_length, int):
+        context_length = None
+    return OllamaModelInfo(
+        name=str(item.get("name") or item.get("model") or "").strip(),
+        model=str(item.get("model") or item.get("name") or "").strip(),
+        modified_at=str(item.get("modified_at") or ""),
+        size_bytes=int(item.get("size") or 0),
+        digest=str(item.get("digest") or ""),
+        parameter_size=str(details.get("parameter_size") or ""),
+        quantization_level=str(details.get("quantization_level") or ""),
+        family=str(details.get("family") or ""),
+        context_length=context_length,
+        capabilities=[
+            str(capability)
+            for capability in item.get("capabilities", [])
+            if isinstance(capability, str)
+        ],
+        details=details,
+    )
+
+
 @router.get("/api-providers", response_model=list[ApiProviderProfile])
 async def api_providers() -> list[ApiProviderProfile]:
     return [_public_api_provider(provider) for provider in list_api_providers()]
@@ -2718,6 +2808,90 @@ async def create_api_provider(request: ApiProviderSaveRequest) -> ApiProviderPro
 @router.post("/api-providers/test", response_model=ApiProviderTestResponse)
 async def test_api_provider(request: ApiProviderSaveRequest) -> ApiProviderTestResponse:
     return await _test_api_provider_connection(_api_provider_request_with_secret(request))
+
+
+@router.get("/ollama/status", response_model=OllamaStatusResponse)
+async def ollama_status() -> OllamaStatusResponse:
+    return await _ollama_status()
+
+
+@router.get("/ollama/models", response_model=list[OllamaModelInfo])
+async def ollama_models() -> list[OllamaModelInfo]:
+    status = await _ollama_status()
+    if not status.running:
+        raise HTTPException(status_code=503, detail=status.message)
+    return status.models
+
+
+@router.post("/ollama/pull", response_model=OllamaPullResponse)
+async def ollama_pull(request: OllamaPullRequest) -> OllamaPullResponse:
+    base_url = _ollama_native_base_url()
+    try:
+        async with httpx.AsyncClient(timeout=None) as client:
+            response = await client.post(
+                f"{base_url}/api/pull",
+                json={"model": request.model, "stream": False},
+            )
+            if response.status_code >= 400:
+                return OllamaPullResponse(
+                    status="error",
+                    model=request.model,
+                    message=(
+                        f"Ollama rejected pull with HTTP {response.status_code}: "
+                        f"{response.text[:240]}"
+                    ),
+                )
+            data = response.json() if response.content else {}
+            return OllamaPullResponse(
+                status="completed",
+                model=request.model,
+                message=f"Ollama model '{request.model}' is available locally.",
+                raw=data if isinstance(data, dict) else {"response": data},
+            )
+    except httpx.RequestError as exc:
+        return OllamaPullResponse(
+            status="error",
+            model=request.model,
+            message=f"Could not reach Ollama at {base_url}: {exc}",
+        )
+    except Exception as exc:
+        return OllamaPullResponse(
+            status="error",
+            model=request.model,
+            message=f"Ollama pull failed: {exc}",
+        )
+
+
+@router.post("/ollama/register", response_model=ApiProviderProfile)
+async def ollama_register(
+    request: OllamaProviderRegisterRequest,
+) -> ApiProviderProfile:
+    status = await _ollama_status()
+    if not status.running:
+        raise HTTPException(status_code=503, detail=status.message)
+
+    installed = {model.name for model in status.models}
+    if request.model not in installed:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                f"Ollama model '{request.model}' is not installed. Pull it first "
+                "or choose an installed model."
+            ),
+        )
+
+    provider_request = ApiProviderSaveRequest(
+        name=request.name,
+        base_url=status.openai_base_url,
+        api_key="",
+        default_model=request.model,
+        is_default=request.is_default,
+        is_fallback=False,
+    )
+    try:
+        return _public_api_provider(save_api_provider(provider_request))
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/api-providers/{provider_id}", response_model=ApiProviderProfile)
@@ -3518,6 +3692,8 @@ def _cloud_provider_from_base_url(base_url: str) -> CloudProvider:
         return CloudProvider.openrouter
     if "api.openai.com" in normalized:
         return CloudProvider.openai
+    if _is_ollama_base_url(base_url):
+        return CloudProvider.ollama
     return CloudProvider.custom
 
 
@@ -3530,6 +3706,9 @@ async def _test_api_provider_connection(
         return ApiProviderTestResponse(ok=False, message="Base URL is required.")
     if not model:
         return ApiProviderTestResponse(ok=False, message="Select or enter a model first.")
+
+    if _is_ollama_base_url(base_url):
+        return await _test_ollama_provider_connection(base_url, model)
 
     headers = {"Content-Type": "application/json"}
     if request.api_key.strip():
@@ -3598,6 +3777,89 @@ async def _test_api_provider_connection(
             ok=False,
             message=f"Provider validation failed: {exc}",
             endpoint=models_url,
+        )
+
+
+async def _test_ollama_provider_connection(
+    base_url: str, model: str
+) -> ApiProviderTestResponse:
+    native_base = _ollama_native_base_url(base_url)
+    tags_url = f"{native_base}/api/tags"
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            tags_response = await client.get(tags_url)
+            if tags_response.status_code >= 400:
+                return ApiProviderTestResponse(
+                    ok=False,
+                    message=(
+                        f"Ollama model registry returned HTTP "
+                        f"{tags_response.status_code}: {tags_response.text[:240]}"
+                    ),
+                    status_code=tags_response.status_code,
+                    endpoint=tags_url,
+                )
+            payload = tags_response.json()
+            installed = {
+                str(item.get("name") or item.get("model") or "")
+                for item in payload.get("models", [])
+                if isinstance(item, dict)
+            }
+            if model not in installed:
+                return ApiProviderTestResponse(
+                    ok=False,
+                    message=(
+                        f"Ollama is running, but '{model}' is not installed. "
+                        "Pull it first or choose an installed model."
+                    ),
+                    status_code=tags_response.status_code,
+                    endpoint=tags_url,
+                )
+
+            chat_url = f"{_ollama_openai_base_url(native_base)}/chat/completions"
+            probe_payload = {
+                "model": model,
+                "messages": [{"role": "user", "content": "ping"}],
+                "max_tokens": 1,
+                "temperature": 0,
+                "stream": False,
+            }
+            chat_response = await client.post(chat_url, json=probe_payload)
+            if 200 <= chat_response.status_code < 300:
+                return ApiProviderTestResponse(
+                    ok=True,
+                    message=(
+                        f"Ollama validated with '{model}' through the "
+                        "OpenAI-compatible chat endpoint."
+                    ),
+                    status_code=chat_response.status_code,
+                    endpoint=chat_url,
+                )
+            return ApiProviderTestResponse(
+                ok=False,
+                message=(
+                    f"Ollama chat probe failed with HTTP {chat_response.status_code}: "
+                    f"{chat_response.text[:240]}"
+                ),
+                status_code=chat_response.status_code,
+                endpoint=chat_url,
+            )
+    except httpx.TimeoutException:
+        return ApiProviderTestResponse(
+            ok=False,
+            message="Ollama validation timed out. Check whether the selected model is still loading.",
+            endpoint=tags_url,
+        )
+    except httpx.RequestError as exc:
+        return ApiProviderTestResponse(
+            ok=False,
+            message=f"Could not reach Ollama at {native_base}: {exc}",
+            endpoint=tags_url,
+        )
+    except Exception as exc:
+        return ApiProviderTestResponse(
+            ok=False,
+            message=f"Ollama validation failed: {exc}",
+            endpoint=tags_url,
         )
 
 
@@ -3699,8 +3961,11 @@ def _extension_request_with_api_profile(
     endpoint = request.endpoint.strip()
     base_url = profile.base_url.rstrip("/")
     if not endpoint:
-        suffix = "/images/generations" if kind == "image" else "/chat/completions"
-        endpoint = f"{base_url}{suffix}"
+        if kind == "vision" and _is_ollama_base_url(base_url):
+            endpoint = f"{_ollama_native_base_url(base_url)}/api/generate"
+        else:
+            suffix = "/images/generations" if kind == "image" else "/chat/completions"
+            endpoint = f"{base_url}{suffix}"
     request_api_key = str(request.api_key or "").strip()
     if request_api_key == SECRET_MASK:
         request_api_key = ""

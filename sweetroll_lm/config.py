@@ -41,6 +41,9 @@ class AppSettings:
     )
     external_api_model: str = os.getenv("SWEETROLL_LM_EXTERNAL_API_MODEL", "koboldcpp")
     external_api_key: str = os.getenv("SWEETROLL_LM_EXTERNAL_API_KEY", "")
+    ollama_base_url: str = os.getenv(
+        "SWEETROLL_LM_OLLAMA_BASE_URL", "http://127.0.0.1:11434"
+    )
     native_llama_enabled: bool = _env_bool("SWEETROLL_LM_NATIVE_LLAMA_ENABLED", True)
     native_import_fallback_enabled: bool = _env_bool(
         "SWEETROLL_LM_NATIVE_IMPORT_FALLBACK_ENABLED", True

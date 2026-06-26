@@ -6,7 +6,7 @@
 
 SweetrollLM blends the character-card and lorebook comfort of SillyTavern with the model-management feel of LM Studio and the focused workspace ergonomics of modern agentic tools. It is built to run from your machine, store user data locally, and gracefully route between native GGUF inference, an embedded KoboldCPP old-PC worker, and OpenAI-compatible cloud APIs.
 
-SweetrollLM is built for users searching for a local AI client, SillyTavern alternative, LM Studio alternative, offline GGUF chat interface, KoboldCPP frontend, Ollama-compatible roleplay UI, OpenAI-compatible desktop chat client, local LLM player, and agentic workspace for coding and automation.
+SweetrollLM is built for users searching for a local AI client, SillyTavern alternative, LM Studio alternative, offline GGUF chat interface, KoboldCPP frontend, Ollama roleplay UI, OpenAI-compatible desktop chat client, local LLM player, and agentic workspace for coding and automation.
 
 ## Project Links
 
@@ -56,6 +56,12 @@ Drop additional project media here as the UI evolves:
 SweetrollLM attempts native `llama-cpp-python` loading first for modern machines. If the local wheel fails because of AVX/AVX2 or binary instruction mismatch, the backend catches the failure and can launch `koboldcpp-oldpc.exe` headlessly as a managed background worker.
 
 The user sees a clean diagnostic instead of a crash.
+
+### Ollama Sidecar Support
+
+SweetrollLM can detect a running Ollama service at `http://127.0.0.1:11434`, list installed models through Ollama's native model registry, validate the selected model through the OpenAI-compatible `/v1/chat/completions` endpoint, and save it as a local provider profile.
+
+Ollama remains optional. Native `llama-cpp-python` GGUF loading and managed KoboldCPP fallback are still available for users who prefer direct model-file control.
 
 ### Secure Multi-API Provider Slots
 
@@ -206,6 +212,7 @@ The repository ships only placeholder `.gitkeep` files for these folders. User c
 - Direct chat image attachments with vision captioning.
 - Workspace image attachments for screenshots.
 - OpenAI-compatible provider registry.
+- First-class Ollama sidecar detection, model listing, pull helper, and provider registration.
 - Provider-specific image generation and vision caption configuration.
 - Local GGUF model scanner and inline loader.
 - Hugging Face GGUF marketplace and background downloader.

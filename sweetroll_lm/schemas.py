@@ -26,6 +26,7 @@ class ChatRole(str, Enum):
 class CloudProvider(str, Enum):
     openai = "openai"
     openrouter = "openrouter"
+    ollama = "ollama"
     custom = "custom"
 
 
@@ -310,6 +311,61 @@ class ApiProviderTestResponse(BaseModel):
     message: str
     status_code: int | None = None
     endpoint: str = ""
+
+
+class OllamaModelInfo(BaseModel):
+    name: str
+    model: str = ""
+    modified_at: str = ""
+    size_bytes: int = 0
+    digest: str = ""
+    parameter_size: str = ""
+    quantization_level: str = ""
+    family: str = ""
+    context_length: int | None = None
+    capabilities: list[str] = Field(default_factory=list)
+    details: dict[str, Any] = Field(default_factory=dict)
+
+
+class OllamaStatusResponse(BaseModel):
+    running: bool
+    base_url: str
+    openai_base_url: str
+    models: list[OllamaModelInfo] = Field(default_factory=list)
+    message: str = ""
+
+
+class OllamaPullRequest(BaseModel):
+    model: str = Field(min_length=1, max_length=160)
+
+    @field_validator("model")
+    @classmethod
+    def trim_model(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Ollama model name is required.")
+        return value
+
+
+class OllamaPullResponse(BaseModel):
+    status: Literal["completed", "error"]
+    model: str
+    message: str = ""
+    raw: dict[str, Any] = Field(default_factory=dict)
+
+
+class OllamaProviderRegisterRequest(BaseModel):
+    model: str = Field(min_length=1, max_length=160)
+    name: str = "Ollama Local"
+    is_default: bool = True
+
+    @field_validator("model", "name")
+    @classmethod
+    def trim_required(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Value is required.")
+        return value
 
 
 class WorkspaceEmailSettings(BaseModel):

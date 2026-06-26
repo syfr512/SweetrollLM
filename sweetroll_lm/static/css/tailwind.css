@@ -2790,6 +2790,36 @@ textarea:disabled {
   white-space: nowrap;
 }
 
+.ollama-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid rgba(var(--accent-rgb), 0.18);
+  border-radius: 10px;
+  background:
+    linear-gradient(135deg, rgba(var(--accent-rgb), 0.08), transparent 38%),
+    rgba(255, 255, 255, 0.03);
+}
+
+.compact-title {
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.compact-title h3 {
+  margin: 0 0 3px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+.compact-title p {
+  margin: 0;
+}
+
 .profile-name {
   color: var(--text);
   font-size: 14px;

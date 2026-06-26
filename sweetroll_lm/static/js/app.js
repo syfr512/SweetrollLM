@@ -101,6 +101,21 @@ const CLOUD_MODEL_CATALOG = {
     "dall-e-3",
     "dall-e-2",
   ],
+  ollama: [
+    "llama3.2:1b",
+    "llama3.2:3b",
+    "llama3.1:8b",
+    "qwen2.5:0.5b",
+    "qwen2.5:1.5b",
+    "qwen2.5:3b",
+    "qwen2.5:7b",
+    "mistral:7b",
+    "gemma3:1b",
+    "gemma3:4b",
+    "phi4-mini",
+    "llava",
+    "moondream",
+  ],
   custom: [
     "koboldcpp",
     "llama3",
@@ -180,6 +195,13 @@ const state = {
   apiProviders: [],
   activeApiProviderId: null,
   editingApiProviderId: null,
+  ollama: {
+    running: false,
+    base_url: "http://127.0.0.1:11434",
+    openai_base_url: "http://127.0.0.1:11434/v1",
+    models: [],
+    message: "",
+  },
   appSettings: {
     global_background_path: "",
     chat_bubble_opacity: 0.82,
@@ -247,6 +269,7 @@ async function initializeApp() {
     loadPersonas(),
     loadLorebooks(),
     loadApiProviders(),
+    loadOllamaStatus({ quiet: true }),
     loadAppSettings(),
     refreshHealth(),
     refreshModels(),
@@ -295,6 +318,14 @@ function cacheElements() {
     "saveApiProvider",
     "deleteApiProvider",
     "apiProviderStatus",
+    "ollamaStatusText",
+    "ollamaStatusBadge",
+    "ollamaModelSelect",
+    "ollamaPullModel",
+    "refreshOllama",
+    "pullOllamaModel",
+    "useOllamaProvider",
+    "ollamaInlineStatus",
     "baseUrl",
     "cloudModelSelect",
     "cloudModel",
@@ -574,6 +605,9 @@ function bindEvents() {
   el.testApiProvider.addEventListener("click", testApiProvider);
   el.saveApiProvider.addEventListener("click", saveApiProvider);
   el.deleteApiProvider.addEventListener("click", deleteApiProvider);
+  el.refreshOllama.addEventListener("click", () => loadOllamaStatus());
+  el.pullOllamaModel.addEventListener("click", pullOllamaModel);
+  el.useOllamaProvider.addEventListener("click", useOllamaProvider);
   el.refreshModels.addEventListener("click", refreshModels);
   el.loadModel.addEventListener("click", loadModel);
   el.unloadModel.addEventListener("click", unloadModel);
@@ -2681,7 +2715,25 @@ function renderSetupProviderOptions() {
 }
 
 function catalogForProvider(provider, catalog = CLOUD_MODEL_CATALOG) {
+  if (provider === "ollama" && catalog === CLOUD_MODEL_CATALOG) {
+    const installed = (state.ollama?.models || []).map((model) => model.name).filter(Boolean);
+    return [...new Set([...installed, ...(catalog.ollama || [])])];
+  }
+  if (provider === "ollama" && catalog === VISION_MODEL_CATALOG) {
+    const installedVision = (state.ollama?.models || [])
+      .filter((model) => isLikelyVisionOllamaModel(model.name, model))
+      .map((model) => model.name)
+      .filter(Boolean);
+    return [...new Set([...installedVision, ...(catalog.ollama || [])])];
+  }
   return catalog[provider] || catalog.custom || [];
+}
+
+function isLikelyVisionOllamaModel(name, model = {}) {
+  const normalized = `${name || ""} ${model.family || ""} ${(model.capabilities || []).join(" ")}`.toLowerCase();
+  return ["llava", "bakllava", "moondream", "vision", "vl", "qwen2.5vl"].some((needle) =>
+    normalized.includes(needle)
+  );
 }
 
 function populateModelSelector(select, input, provider, currentValue = "", catalog = CLOUD_MODEL_CATALOG) {
@@ -2761,11 +2813,13 @@ function setupApiProviderPayload() {
       ? "https://api.openai.com/v1"
       : providerType === "openrouter"
         ? "https://openrouter.ai/api/v1"
-        : el.baseUrl.value.trim() || "http://127.0.0.1:11434/v1";
+        : providerType === "ollama"
+          ? state.ollama.openai_base_url || "http://127.0.0.1:11434/v1"
+          : el.baseUrl.value.trim() || "http://127.0.0.1:11434/v1";
   return {
-    name: "First Cloud Profile",
+    name: providerType === "ollama" ? "Ollama Local" : "First Cloud Profile",
     base_url: baseUrl,
-    api_key: el.setupApiKey.value.trim(),
+    api_key: providerType === "ollama" ? "" : el.setupApiKey.value.trim(),
     default_model: setupSelectedCloudModel(),
     is_default: true,
     is_fallback: false,
@@ -2976,6 +3030,11 @@ function updateCloudDefaults() {
     el.baseUrl.value = "https://openrouter.ai/api/v1";
   } else if (el.cloudProvider.value === "openai") {
     el.baseUrl.value = "https://api.openai.com/v1";
+  } else if (el.cloudProvider.value === "ollama") {
+    el.baseUrl.value = state.ollama.openai_base_url || "http://127.0.0.1:11434/v1";
+    if (!el.apiProviderName.value.trim() || el.apiProviderName.value === "New Provider") {
+      el.apiProviderName.value = "Ollama Local";
+    }
   } else if (!el.baseUrl.value.trim()) {
     el.baseUrl.value = "http://127.0.0.1:11434/v1";
   }
@@ -3020,6 +3079,143 @@ async function loadApiProviders() {
     renderSetupProviderOptions();
     syncQuickModelControls();
     setApiProviderStatus(error.message || "Could not load API providers.");
+  }
+}
+
+async function loadOllamaStatus(options = {}) {
+  if (!el.ollamaStatusText) {
+    return;
+  }
+  if (!options.quiet) {
+    setOllamaStatus("Checking local Ollama runtime...", "Checking");
+  }
+  try {
+    const response = await fetch("/api/ollama/status");
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.detail || "Could not check Ollama.");
+    }
+    state.ollama = {
+      running: Boolean(data.running),
+      base_url: data.base_url || "http://127.0.0.1:11434",
+      openai_base_url: data.openai_base_url || "http://127.0.0.1:11434/v1",
+      models: data.models || [],
+      message: data.message || "",
+    };
+    renderOllamaPanel();
+    if (el.cloudProvider.value === "ollama") {
+      renderCloudModelControl();
+    }
+    renderVisionModelControl();
+  } catch (error) {
+    state.ollama.running = false;
+    state.ollama.models = [];
+    state.ollama.message = error.message || "Ollama status check failed.";
+    renderOllamaPanel();
+  }
+}
+
+function renderOllamaPanel() {
+  if (!el.ollamaStatusText || !el.ollamaModelSelect) {
+    return;
+  }
+  el.ollamaStatusBadge.textContent = state.ollama.running ? "Running" : "Offline";
+  el.ollamaStatusBadge.classList.toggle("badge-local", state.ollama.running);
+  el.ollamaStatusText.textContent =
+    state.ollama.message ||
+    (state.ollama.running ? "Ollama is available." : "Ollama is not running.");
+  el.ollamaModelSelect.innerHTML = "";
+  if (!state.ollama.models.length) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = state.ollama.running ? "No models installed" : "Ollama offline";
+    el.ollamaModelSelect.appendChild(option);
+  } else {
+    state.ollama.models.forEach((model) => {
+      const option = document.createElement("option");
+      option.value = model.name;
+      const details = [model.parameter_size, model.quantization_level, formatBytes(model.size_bytes)]
+        .filter(Boolean)
+        .join(" - ");
+      option.textContent = details ? `${model.name} (${details})` : model.name;
+      el.ollamaModelSelect.appendChild(option);
+    });
+  }
+  el.useOllamaProvider.disabled = !state.ollama.running || !state.ollama.models.length;
+  el.ollamaInlineStatus.textContent = state.ollama.running
+    ? "Register Ollama as a cloud-compatible sidecar profile, or pull another model."
+    : "Start Ollama, then click Detect.";
+}
+
+function setOllamaStatus(message, badge = "") {
+  if (el.ollamaStatusText) {
+    el.ollamaStatusText.textContent = message;
+  }
+  if (el.ollamaInlineStatus) {
+    el.ollamaInlineStatus.textContent = message;
+  }
+  if (badge && el.ollamaStatusBadge) {
+    el.ollamaStatusBadge.textContent = badge;
+  }
+}
+
+async function pullOllamaModel() {
+  const model = el.ollamaPullModel.value.trim();
+  if (!model) {
+    setOllamaStatus("Enter an Ollama model name to pull.", "Required");
+    return;
+  }
+  el.pullOllamaModel.disabled = true;
+  setOllamaStatus(`Pulling ${model}. This can take a while...`, "Pulling");
+  try {
+    const response = await fetch("/api/ollama/pull", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model }),
+    });
+    const payload = await response.json();
+    if (!response.ok || payload.status === "error") {
+      throw new Error(payload.detail || payload.message || "Ollama pull failed.");
+    }
+    setOllamaStatus(payload.message || `Pulled ${model}.`, "Ready");
+    await loadOllamaStatus({ quiet: true });
+    el.ollamaModelSelect.value = model;
+  } catch (error) {
+    setOllamaStatus(error.message || "Ollama pull failed.", "Error");
+  } finally {
+    el.pullOllamaModel.disabled = false;
+  }
+}
+
+async function useOllamaProvider() {
+  const model = el.ollamaModelSelect.value || state.ollama.models[0]?.name || "";
+  if (!model) {
+    setOllamaStatus("Choose an installed Ollama model first.", "Required");
+    return;
+  }
+  el.useOllamaProvider.disabled = true;
+  setOllamaStatus(`Registering Ollama with ${model}...`, "Saving");
+  try {
+    const response = await fetch("/api/ollama/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model, name: "Ollama Local", is_default: true }),
+    });
+    const saved = await response.json();
+    if (!response.ok) {
+      throw new Error(saved.detail || "Could not register Ollama provider.");
+    }
+    state.activeApiProviderId = saved.id;
+    state.editingApiProviderId = saved.id;
+    el.inferenceSource.value = "cloud";
+    await loadApiProviders();
+    updateInferenceVisibility();
+    setOllamaStatus(`Ollama is active with ${model}.`, "Active");
+    setApiProviderStatus(`Ollama Local saved with ${model}.`);
+  } catch (error) {
+    setOllamaStatus(error.message || "Could not register Ollama.", "Error");
+  } finally {
+    el.useOllamaProvider.disabled = !state.ollama.running || !state.ollama.models.length;
   }
 }
 
@@ -3186,7 +3382,9 @@ function setApiProviderEditor(provider) {
   el.apiKey.value = "";
   el.apiKey.placeholder = provider.api_key
     ? "Saved securely. Leave blank to keep it."
-    : "API key";
+    : inferCloudProvider(provider.base_url) === "ollama"
+      ? "No API key needed for local Ollama"
+      : "API key";
   el.apiProviderDefault.checked = Boolean(provider.is_default);
   el.apiProviderFallback.checked = Boolean(provider.is_fallback);
   state.validatedApiProviderKey = "";
@@ -3381,7 +3579,9 @@ function applyApiProviderToFields(provider) {
   el.apiKey.value = "";
   el.apiKey.placeholder = provider.api_key
     ? "Saved securely. Leave blank to keep it."
-    : "API key";
+    : inferCloudProvider(provider.base_url) === "ollama"
+      ? "No API key needed for local Ollama"
+      : "API key";
   el.apiProviderDefault.checked = Boolean(provider.is_default);
   el.apiProviderFallback.checked = Boolean(provider.is_fallback);
 }
@@ -3415,6 +3615,12 @@ function applyExtensionApiProfileDefaults(kind) {
     el.imageEndpoint.value = `${baseUrl}/images/generations`;
     return;
   }
+  if (inferred === "ollama") {
+    el.visionProvider.value = "ollama";
+    renderVisionModelControl(provider.default_model || "");
+    el.visionEndpoint.value = `${ollamaNativeBaseUrl(provider.base_url)}/api/generate`;
+    return;
+  }
   if (["openai", "openrouter", "custom"].includes(inferred)) {
     el.visionProvider.value = inferred;
   }
@@ -3430,6 +3636,13 @@ function extensionEndpoint(kind, provider = extensionApiProvider(kind)) {
   }
   if (!provider?.base_url) {
     return "";
+  }
+  if (kind === "vision" && inferCloudProvider(provider.base_url) === "ollama") {
+    const derived = `${ollamaNativeBaseUrl(provider.base_url)}/api/generate`;
+    if (field) {
+      field.value = derived;
+    }
+    return derived;
   }
   const suffix = kind === "image" ? "/images/generations" : "/chat/completions";
   const derived = `${provider.base_url.replace(/\/$/, "")}${suffix}`;
@@ -3451,7 +3664,19 @@ function inferCloudProvider(baseUrl) {
   if (normalized.includes("api.openai.com")) {
     return "openai";
   }
+  if (
+    normalized.includes("ollama") ||
+    normalized.startsWith("http://127.0.0.1:11434") ||
+    normalized.startsWith("http://localhost:11434")
+  ) {
+    return "ollama";
+  }
   return "custom";
+}
+
+function ollamaNativeBaseUrl(baseUrl) {
+  const normalized = String(baseUrl || "http://127.0.0.1:11434").replace(/\/$/, "");
+  return normalized.endsWith("/v1") ? normalized.slice(0, -3).replace(/\/$/, "") : normalized;
 }
 
 function setApiProviderStatus(message) {
