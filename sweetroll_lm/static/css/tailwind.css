@@ -648,6 +648,16 @@ textarea:disabled {
   gap: 8px;
 }
 
+.sidebar-ollama-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidebar-ollama-panel.hidden {
+  display: none;
+}
+
 .feature-nav-section {
   border-color: rgba(var(--accent-rgb), 0.32);
 }
@@ -2818,6 +2828,43 @@ textarea:disabled {
 
 .compact-title p {
   margin: 0;
+}
+
+.ollama-capability-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 20px;
+}
+
+.ollama-chip {
+  padding: 3px 7px;
+  border: 1px solid rgba(var(--accent-rgb), 0.2);
+  border-radius: 999px;
+  background: rgba(var(--accent-rgb), 0.08);
+  color: var(--muted-strong);
+  font-size: 10px;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.ollama-meta {
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.ollama-pull-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.ollama-pull-progress.hidden {
+  display: none;
 }
 
 .profile-name {

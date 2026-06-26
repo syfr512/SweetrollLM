@@ -318,11 +318,14 @@ class OllamaModelInfo(BaseModel):
     model: str = ""
     modified_at: str = ""
     size_bytes: int = 0
+    size_vram_bytes: int = 0
     digest: str = ""
     parameter_size: str = ""
     quantization_level: str = ""
     family: str = ""
     context_length: int | None = None
+    expires_at: str = ""
+    loaded: bool = False
     capabilities: list[str] = Field(default_factory=list)
     details: dict[str, Any] = Field(default_factory=dict)
 
@@ -345,6 +348,30 @@ class OllamaPullRequest(BaseModel):
         if not value:
             raise ValueError("Ollama model name is required.")
         return value
+
+
+class OllamaModelDetailResponse(BaseModel):
+    model: str
+    modelfile: str = ""
+    parameters: str = ""
+    template: str = ""
+    system: str = ""
+    license: str = ""
+    details: dict[str, Any] = Field(default_factory=dict)
+    model_info: dict[str, Any] = Field(default_factory=dict)
+    capabilities: list[str] = Field(default_factory=list)
+    message: str = ""
+
+
+class OllamaPullJob(BaseModel):
+    job_id: str
+    model: str
+    status: Literal["queued", "pulling", "completed", "error"] = "queued"
+    percent: float = 0.0
+    completed_bytes: int = 0
+    total_bytes: int | None = None
+    digest: str = ""
+    message: str = ""
 
 
 class OllamaPullResponse(BaseModel):

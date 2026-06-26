@@ -165,7 +165,8 @@
           </div>
           <div class="accordion-body" data-accordion-body>
             <select id="inferenceSource" class="input">
-              <option value="local">Local Engine Mode</option>
+              <option value="local">Local GGUF Engine</option>
+              <option value="ollama">Ollama Local</option>
               <option value="cloud">Cloud API Mode</option>
             </select>
             <div id="sidebarLocalModelPanel" class="sidebar-local-model-panel">
@@ -186,6 +187,27 @@
                 <button id="sidebarUnloadModel" class="secondary-button" type="button">Unload</button>
               </div>
               <p id="sidebarModelInlineError" class="inline-error hidden"></p>
+            </div>
+            <div id="sidebarOllamaPanel" class="sidebar-ollama-panel hidden">
+              <div class="subsection-title">
+                <h3>Ollama Local</h3>
+                <button id="sidebarRefreshOllama" class="ghost-button" type="button">Detect</button>
+              </div>
+              <div class="active-model-row">
+                <span id="sidebarOllamaDot" class="status-dot"></span>
+                <p id="sidebarOllamaStatusText">Ollama not checked.</p>
+              </div>
+              <label class="field">
+                <span>Installed Ollama Model</span>
+                <select id="sidebarOllamaModelSelect" class="input"></select>
+              </label>
+              <div id="sidebarOllamaCapabilityBadges" class="ollama-capability-row"></div>
+              <div id="sidebarOllamaModelMeta" class="ollama-meta muted">Detect Ollama to inspect local models.</div>
+              <div class="button-row">
+                <button id="sidebarUseOllamaLocal" class="primary-button" type="button">Use for Chat</button>
+                <button id="sidebarOpenOllamaCloudPanel" class="secondary-button" type="button">Manage</button>
+              </div>
+              <p id="sidebarOllamaInlineStatus" class="muted">Runs through your local Ollama app at 127.0.0.1:11434.</p>
             </div>
           </div>
         </section>
@@ -262,7 +284,7 @@
             <div class="ollama-card">
               <div class="panel-title compact-title">
                 <div>
-                  <h3>Ollama Sidecar</h3>
+                  <h3>Ollama Local</h3>
                   <p id="ollamaStatusText" class="muted">Detect a local Ollama runtime without changing llama.cpp support.</p>
                 </div>
                 <span id="ollamaStatusBadge" class="badge">Unknown</span>
@@ -271,6 +293,14 @@
                 <span>Installed Ollama Model</span>
                 <select id="ollamaModelSelect" class="input"></select>
               </label>
+              <div id="ollamaCapabilityBadges" class="ollama-capability-row"></div>
+              <div id="ollamaModelMeta" class="ollama-meta muted">Model metadata appears after detection.</div>
+              <div id="ollamaPullProgress" class="ollama-pull-progress hidden">
+                <div class="download-progress-bar">
+                  <span id="ollamaPullProgressBar"></span>
+                </div>
+                <p id="ollamaPullProgressText" class="muted">Waiting for pull progress...</p>
+              </div>
               <label class="field">
                 <span>Pull Model</span>
                 <input id="ollamaPullModel" class="input" placeholder="llama3.2:1b, qwen2.5:3b, gemma3:4b" />
@@ -412,7 +442,8 @@
           </div>
           <div class="quick-model-bar" aria-label="Active model controls">
             <select id="quickInferenceSource" class="quick-select" title="Inference source">
-              <option value="local">Local</option>
+              <option value="local">GGUF</option>
+              <option value="ollama">Ollama</option>
               <option value="cloud">Cloud</option>
             </select>
             <select id="quickApiProvider" class="quick-select" title="Active cloud provider"></select>

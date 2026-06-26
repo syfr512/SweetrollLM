@@ -11,7 +11,9 @@ License: GNU Affero General Public License v3.0
 - Supports character cards, personas, lorebooks, per-chat summaries, chat galleries, and chat-native image attachments.
 - Loads local GGUF models through `llama-cpp-python` when supported.
 - Falls back to a managed `koboldcpp-oldpc.exe` worker for legacy CPUs that cannot run modern AVX/AVX2 wheels.
-- Connects to OpenAI-compatible APIs, including OpenAI, OpenRouter, LM Studio-style endpoints, local KoboldCPP endpoints, and first-class Ollama sidecar profiles discovered from `http://127.0.0.1:11434/api/tags`.
+- Connects to OpenAI-compatible APIs, including OpenAI, OpenRouter, LM Studio-style endpoints, local KoboldCPP endpoints, and first-class Ollama profiles discovered from `http://127.0.0.1:11434/api/tags`.
+- For Ollama, SweetrollLM also reads loaded model state from `/api/ps`, model metadata/capabilities from `/api/show`, and streams pull progress from a background `/api/pull` worker into the UI.
+- Ollama is exposed both as a local runtime inference source beside classic GGUF loading and as an optional OpenAI-compatible provider profile.
 - Includes a Hugging Face GGUF marketplace, local model scanner, background downloader, and inline local model manager.
 - Includes an Agentic Workspace for sandboxed file/folder work, terminal execution, background services, and automation experiments.
 - Stores user data locally under `storage/` and workspace files under `workspace/`.

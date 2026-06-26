@@ -57,9 +57,16 @@ SweetrollLM attempts native `llama-cpp-python` loading first for modern machines
 
 The user sees a clean diagnostic instead of a crash.
 
-### Ollama Sidecar Support
+### Ollama Local Runtime Support
 
-SweetrollLM can detect a running Ollama service at `http://127.0.0.1:11434`, list installed models through Ollama's native model registry, validate the selected model through the OpenAI-compatible `/v1/chat/completions` endpoint, and save it as a local provider profile.
+SweetrollLM can detect a running Ollama service at `http://127.0.0.1:11434`, list installed models through Ollama's native model registry, inspect currently loaded models, display model metadata and capability chips, validate the selected model through the OpenAI-compatible `/v1/chat/completions` endpoint, and save it as a local provider profile.
+
+Ollama can be used two ways:
+
+- As a local runtime source from the main inference selector, beside the classic GGUF loader.
+- As a cloud-compatible provider profile for users who prefer managing it from the API registry.
+
+The Ollama panel also includes a background pull helper with Server-Sent Events progress. You can type a model tag such as `llama3.2:1b`, start the pull, and watch byte-level progress without freezing the chat UI.
 
 Ollama remains optional. Native `llama-cpp-python` GGUF loading and managed KoboldCPP fallback are still available for users who prefer direct model-file control.
 
@@ -212,7 +219,7 @@ The repository ships only placeholder `.gitkeep` files for these folders. User c
 - Direct chat image attachments with vision captioning.
 - Workspace image attachments for screenshots.
 - OpenAI-compatible provider registry.
-- First-class Ollama sidecar detection, model listing, pull helper, and provider registration.
+- First-class Ollama runtime detection, local Ollama source selection, loaded-model inspection, model metadata lookup, SSE pull progress, and provider registration.
 - Provider-specific image generation and vision caption configuration.
 - Local GGUF model scanner and inline loader.
 - Hugging Face GGUF marketplace and background downloader.

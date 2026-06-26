@@ -202,6 +202,8 @@ const state = {
     models: [],
     message: "",
   },
+  ollamaSelectedModel: "",
+  ollamaPullSource: null,
   appSettings: {
     global_background_path: "",
     chat_bubble_opacity: 0.82,
@@ -297,6 +299,16 @@ function cacheElements() {
     "sidebarActiveModelDot",
     "sidebarModelStatus",
     "sidebarModelInlineError",
+    "sidebarOllamaPanel",
+    "sidebarRefreshOllama",
+    "sidebarOllamaDot",
+    "sidebarOllamaStatusText",
+    "sidebarOllamaModelSelect",
+    "sidebarOllamaCapabilityBadges",
+    "sidebarOllamaModelMeta",
+    "sidebarUseOllamaLocal",
+    "sidebarOpenOllamaCloudPanel",
+    "sidebarOllamaInlineStatus",
     "cloudPanel",
     "refreshModels",
     "localModelPath",
@@ -321,6 +333,11 @@ function cacheElements() {
     "ollamaStatusText",
     "ollamaStatusBadge",
     "ollamaModelSelect",
+    "ollamaCapabilityBadges",
+    "ollamaModelMeta",
+    "ollamaPullProgress",
+    "ollamaPullProgressBar",
+    "ollamaPullProgressText",
     "ollamaPullModel",
     "refreshOllama",
     "pullOllamaModel",
@@ -606,6 +623,20 @@ function bindEvents() {
   el.saveApiProvider.addEventListener("click", saveApiProvider);
   el.deleteApiProvider.addEventListener("click", deleteApiProvider);
   el.refreshOllama.addEventListener("click", () => loadOllamaStatus());
+  el.ollamaModelSelect.addEventListener("change", () => {
+    setOllamaSelectedModel(el.ollamaModelSelect.value, { loadDetail: true });
+  });
+  el.sidebarRefreshOllama.addEventListener("click", () => loadOllamaStatus());
+  el.sidebarOllamaModelSelect.addEventListener("change", () => {
+    setOllamaSelectedModel(el.sidebarOllamaModelSelect.value, { loadDetail: true });
+  });
+  el.sidebarUseOllamaLocal.addEventListener("click", useOllamaLocalRuntime);
+  el.sidebarOpenOllamaCloudPanel.addEventListener("click", () => {
+    el.inferenceSource.value = "cloud";
+    updateInferenceVisibility();
+    el.cloudProvider.value = "ollama";
+    updateCloudDefaults();
+  });
   el.pullOllamaModel.addEventListener("click", pullOllamaModel);
   el.useOllamaProvider.addEventListener("click", useOllamaProvider);
   el.refreshModels.addEventListener("click", refreshModels);
@@ -1853,8 +1884,8 @@ async function interruptWorkspaceGeneration() {
 }
 
 function workspaceAgentPayload(prompt, extra = {}) {
-  const source = el.inferenceSource.value;
-  const provider = activeApiProvider();
+  const uiSource = el.inferenceSource.value;
+  const source = backendInferenceSource(uiSource);
   const payload = {
     prompt,
     session_id: state.workspaceChatId || "default",
@@ -1867,15 +1898,7 @@ function workspaceAgentPayload(prompt, extra = {}) {
     },
     ...extra,
   };
-  if (source === "cloud") {
-    payload.cloud = {
-      provider: provider ? inferCloudProvider(provider.base_url) : el.cloudProvider.value,
-      base_url: provider?.base_url || el.baseUrl.value,
-      model: provider?.default_model || selectedModelValue(el.cloudModelSelect, el.cloudModel),
-      api_key: provider ? "" : el.apiKey.value,
-    };
-    payload.api_provider_id = provider?.id || null;
-  }
+  applyCloudSettingsForUiSource(payload, uiSource);
   return payload;
 }
 
@@ -3006,15 +3029,26 @@ function finishSetupWizard() {
 }
 
 function updateInferenceVisibility() {
-  const localMode = el.inferenceSource.value === "local";
-  el.sidebarLocalModelPanel.classList.toggle("hidden", !localMode);
-  el.cloudPanel.classList.toggle("hidden", localMode);
-  setCloudFieldsEnabled(!localMode);
-  el.sourceBadge.textContent = localMode ? "Local" : "Cloud";
-  el.sourceBadge.classList.toggle("badge-local", localMode);
-  el.chatSubtitle.textContent = localMode ? "Local Engine Mode" : "Cloud API Mode";
-  if (!localMode) {
+  const source = el.inferenceSource.value;
+  const ggufMode = source === "local";
+  const ollamaMode = source === "ollama";
+  const cloudMode = source === "cloud";
+  el.sidebarLocalModelPanel.classList.toggle("hidden", !ggufMode);
+  el.sidebarOllamaPanel.classList.toggle("hidden", !ollamaMode);
+  el.cloudPanel.classList.toggle("hidden", !cloudMode);
+  setCloudFieldsEnabled(cloudMode);
+  el.sourceBadge.textContent = ollamaMode ? "Ollama" : ggufMode ? "GGUF" : "Cloud";
+  el.sourceBadge.classList.toggle("badge-local", ggufMode || ollamaMode);
+  el.chatSubtitle.textContent = ollamaMode
+    ? "Ollama Local"
+    : ggufMode
+      ? "Local GGUF Engine"
+      : "Cloud API Mode";
+  if (cloudMode) {
     applyActiveApiProviderToFields();
+  }
+  if (ollamaMode && !state.ollama.models.length) {
+    loadOllamaStatus({ quiet: true });
   }
   syncQuickModelControls();
 }
@@ -3116,35 +3150,35 @@ async function loadOllamaStatus(options = {}) {
 }
 
 function renderOllamaPanel() {
-  if (!el.ollamaStatusText || !el.ollamaModelSelect) {
+  if (!el.ollamaStatusText || !el.ollamaModelSelect || !el.sidebarOllamaModelSelect) {
     return;
   }
   el.ollamaStatusBadge.textContent = state.ollama.running ? "Running" : "Offline";
   el.ollamaStatusBadge.classList.toggle("badge-local", state.ollama.running);
+  el.sidebarOllamaDot.classList.toggle("loaded", state.ollama.running);
   el.ollamaStatusText.textContent =
     state.ollama.message ||
     (state.ollama.running ? "Ollama is available." : "Ollama is not running.");
-  el.ollamaModelSelect.innerHTML = "";
-  if (!state.ollama.models.length) {
-    const option = document.createElement("option");
-    option.value = "";
-    option.textContent = state.ollama.running ? "No models installed" : "Ollama offline";
-    el.ollamaModelSelect.appendChild(option);
-  } else {
-    state.ollama.models.forEach((model) => {
-      const option = document.createElement("option");
-      option.value = model.name;
-      const details = [model.parameter_size, model.quantization_level, formatBytes(model.size_bytes)]
-        .filter(Boolean)
-        .join(" - ");
-      option.textContent = details ? `${model.name} (${details})` : model.name;
-      el.ollamaModelSelect.appendChild(option);
-    });
+  el.sidebarOllamaStatusText.textContent =
+    state.ollama.message ||
+    (state.ollama.running ? "Ollama is available." : "Ollama is not running.");
+  if (!state.ollamaSelectedModel && state.ollama.models.length) {
+    state.ollamaSelectedModel = state.ollama.models[0].name;
   }
+  populateOllamaModelSelect(el.ollamaModelSelect);
+  populateOllamaModelSelect(el.sidebarOllamaModelSelect);
+  renderOllamaSelectedModel();
   el.useOllamaProvider.disabled = !state.ollama.running || !state.ollama.models.length;
+  el.sidebarUseOllamaLocal.disabled = !state.ollama.running || !state.ollama.models.length;
   el.ollamaInlineStatus.textContent = state.ollama.running
-    ? "Register Ollama as a cloud-compatible sidecar profile, or pull another model."
+    ? "Register Ollama as a saved provider profile, or pull another model."
     : "Start Ollama, then click Detect.";
+  el.sidebarOllamaInlineStatus.textContent = state.ollama.running
+    ? "Pick an installed model and chat locally through Ollama."
+    : "Start Ollama, then click Detect.";
+  if (state.ollama.models.length && selectedOllamaModel()) {
+    loadOllamaModelDetail(selectedOllamaModel());
+  }
 }
 
 function setOllamaStatus(message, badge = "") {
@@ -3154,8 +3188,158 @@ function setOllamaStatus(message, badge = "") {
   if (el.ollamaInlineStatus) {
     el.ollamaInlineStatus.textContent = message;
   }
+  if (el.sidebarOllamaInlineStatus) {
+    el.sidebarOllamaInlineStatus.textContent = message;
+  }
   if (badge && el.ollamaStatusBadge) {
     el.ollamaStatusBadge.textContent = badge;
+  }
+}
+
+function populateOllamaModelSelect(select) {
+  if (!select) {
+    return;
+  }
+  const selected = selectedOllamaModel();
+  select.innerHTML = "";
+  if (!state.ollama.models.length) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = state.ollama.running ? "No models installed" : "Ollama offline";
+    select.appendChild(option);
+    return;
+  }
+  state.ollama.models.forEach((model) => {
+    const option = document.createElement("option");
+    option.value = model.name;
+    const details = [model.parameter_size, model.quantization_level, formatBytes(model.size_bytes)]
+      .filter(Boolean)
+      .join(" - ");
+    option.textContent = details ? `${model.name} (${details})` : model.name;
+    select.appendChild(option);
+  });
+  select.value = state.ollama.models.some((model) => model.name === selected)
+    ? selected
+    : state.ollama.models[0].name;
+}
+
+function selectedOllamaModel() {
+  return (
+    state.ollamaSelectedModel ||
+    el.sidebarOllamaModelSelect?.value ||
+    el.ollamaModelSelect?.value ||
+    state.ollama.models[0]?.name ||
+    ""
+  );
+}
+
+function setOllamaSelectedModel(modelName, options = {}) {
+  state.ollamaSelectedModel = modelName || "";
+  [el.ollamaModelSelect, el.sidebarOllamaModelSelect].forEach((select) => {
+    if (select && Array.from(select.options).some((option) => option.value === state.ollamaSelectedModel)) {
+      select.value = state.ollamaSelectedModel;
+    }
+  });
+  renderOllamaSelectedModel();
+  syncQuickModelControls();
+  if (options.loadDetail && state.ollamaSelectedModel) {
+    loadOllamaModelDetail(state.ollamaSelectedModel);
+  }
+}
+
+function renderOllamaSelectedModel(detail = null) {
+  if (!el.ollamaCapabilityBadges || !el.ollamaModelMeta) {
+    return;
+  }
+  const selectedName = selectedOllamaModel();
+  const model = state.ollama.models.find((item) => item.name === selectedName);
+  [el.ollamaCapabilityBadges, el.sidebarOllamaCapabilityBadges].forEach((container) => {
+    if (container) {
+      container.innerHTML = "";
+    }
+  });
+  if (!model) {
+    const emptyText = state.ollama.running
+      ? "Choose an installed model to inspect capabilities."
+      : "Start Ollama, then click Detect.";
+    el.ollamaModelMeta.textContent = emptyText;
+    el.sidebarOllamaModelMeta.textContent = emptyText;
+    return;
+  }
+
+  capabilityLabelsForOllama(model, detail).forEach((label) => {
+    [el.ollamaCapabilityBadges, el.sidebarOllamaCapabilityBadges].forEach((container) => {
+      if (!container) {
+        return;
+      }
+      const chip = document.createElement("span");
+      chip.className = "ollama-chip";
+      chip.textContent = label;
+      container.appendChild(chip);
+    });
+  });
+
+  const meta = [
+    model.loaded ? "Loaded in memory" : "Installed",
+    model.parameter_size || "",
+    model.quantization_level || "",
+    model.family ? `${model.family} family` : "",
+    model.context_length ? `${Number(model.context_length).toLocaleString()} ctx` : "",
+    model.size_bytes ? `${formatBytes(model.size_bytes)} disk` : "",
+    model.size_vram_bytes ? `${formatBytes(model.size_vram_bytes)} VRAM` : "",
+    model.expires_at ? `expires ${formatDateTime(model.expires_at)}` : "",
+  ].filter(Boolean);
+  const detailBits = detail
+    ? [
+        detail.model_info && Object.keys(detail.model_info).length
+          ? `${Object.keys(detail.model_info).length} metadata fields`
+          : "",
+        detail.template ? "template available" : "",
+      ].filter(Boolean)
+    : [];
+  const text = [...meta, ...detailBits].join(" - ") || model.name;
+  el.ollamaModelMeta.textContent = text;
+  el.sidebarOllamaModelMeta.textContent = text;
+}
+
+function capabilityLabelsForOllama(model, detail = null) {
+  const labels = new Set();
+  if (model.loaded) {
+    labels.add("Loaded");
+  }
+  (model.capabilities || []).forEach((capability) => labels.add(capability));
+  (detail?.capabilities || []).forEach((capability) => labels.add(capability));
+  if (isLikelyVisionOllamaModel(model.name, model)) {
+    labels.add("vision");
+  }
+  if ((model.capabilities || []).includes("tools")) {
+    labels.add("tools");
+  }
+  if (!labels.size) {
+    labels.add("chat");
+  }
+  return [...labels].slice(0, 7);
+}
+
+async function loadOllamaModelDetail(modelName) {
+  if (!modelName || !state.ollama.running) {
+    return;
+  }
+  try {
+    const response = await fetch(`/api/ollama/show/${encodeURIComponent(modelName)}`);
+    const detail = await response.json();
+    if (!response.ok) {
+      throw new Error(detail.detail || detail.message || "Could not load model metadata.");
+    }
+    if (selectedOllamaModel() === modelName) {
+      renderOllamaSelectedModel(detail);
+    }
+  } catch (error) {
+    if (selectedOllamaModel() === modelName && el.ollamaModelMeta) {
+      const current = el.ollamaModelMeta.textContent || modelName;
+      el.ollamaModelMeta.textContent = `${current} - metadata unavailable`;
+      el.sidebarOllamaModelMeta.textContent = `${current} - metadata unavailable`;
+    }
   }
 }
 
@@ -3167,6 +3351,7 @@ async function pullOllamaModel() {
   }
   el.pullOllamaModel.disabled = true;
   setOllamaStatus(`Pulling ${model}. This can take a while...`, "Pulling");
+  resetOllamaPullProgress();
   try {
     const response = await fetch("/api/ollama/pull", {
       method: "POST",
@@ -3177,18 +3362,91 @@ async function pullOllamaModel() {
     if (!response.ok || payload.status === "error") {
       throw new Error(payload.detail || payload.message || "Ollama pull failed.");
     }
-    setOllamaStatus(payload.message || `Pulled ${model}.`, "Ready");
-    await loadOllamaStatus({ quiet: true });
-    el.ollamaModelSelect.value = model;
+    startOllamaPullProgress(payload.job_id, model);
   } catch (error) {
     setOllamaStatus(error.message || "Ollama pull failed.", "Error");
-  } finally {
     el.pullOllamaModel.disabled = false;
+    updateOllamaPullProgress({ status: "error", message: error.message || "Ollama pull failed." });
+  }
+}
+
+function resetOllamaPullProgress() {
+  if (state.ollamaPullSource) {
+    state.ollamaPullSource.close();
+    state.ollamaPullSource = null;
+  }
+  if (el.ollamaPullProgress) {
+    el.ollamaPullProgress.classList.remove("hidden");
+  }
+  if (el.ollamaPullProgressBar) {
+    el.ollamaPullProgressBar.style.width = "0%";
+  }
+  if (el.ollamaPullProgressText) {
+    el.ollamaPullProgressText.textContent = "Starting Ollama pull...";
+  }
+}
+
+function startOllamaPullProgress(jobId, model) {
+  if (!jobId) {
+    updateOllamaPullProgress({ status: "error", message: "Ollama pull job did not return an id." });
+    el.pullOllamaModel.disabled = false;
+    return;
+  }
+  const source = new EventSource(`/api/ollama/pull/progress?job_id=${encodeURIComponent(jobId)}`);
+  state.ollamaPullSource = source;
+  source.onmessage = async (event) => {
+    const payload = JSON.parse(event.data || "{}");
+    updateOllamaPullProgress(payload);
+    if (payload.status === "completed" || payload.status === "error") {
+      source.close();
+      state.ollamaPullSource = null;
+      el.pullOllamaModel.disabled = false;
+      if (payload.status === "completed") {
+        setOllamaStatus(payload.message || `Pulled ${model}.`, "Ready");
+        await loadOllamaStatus({ quiet: true });
+        el.ollamaModelSelect.value = model;
+        renderOllamaSelectedModel();
+      } else {
+        setOllamaStatus(payload.message || "Ollama pull failed.", "Error");
+      }
+    }
+  };
+  source.onerror = () => {
+    source.close();
+    state.ollamaPullSource = null;
+    el.pullOllamaModel.disabled = false;
+    updateOllamaPullProgress({
+      status: "error",
+      message: "Lost connection to Ollama pull progress stream.",
+    });
+  };
+}
+
+function updateOllamaPullProgress(payload) {
+  if (!el.ollamaPullProgress || !el.ollamaPullProgressBar || !el.ollamaPullProgressText) {
+    return;
+  }
+  el.ollamaPullProgress.classList.remove("hidden");
+  const percent = Number(payload.percent || 0);
+  const clamped = Math.max(0, Math.min(100, percent));
+  el.ollamaPullProgressBar.style.width = `${clamped}%`;
+  const completed = Number(payload.completed_bytes || 0);
+  const total = payload.total_bytes ? Number(payload.total_bytes) : null;
+  const bytes = total
+    ? `${formatBytes(completed)} / ${formatBytes(total)}`
+    : completed
+      ? formatBytes(completed)
+      : "";
+  const message = payload.message || "Pulling model...";
+  const label = payload.status === "completed" ? "100%" : `${clamped.toFixed(1)}%`;
+  el.ollamaPullProgressText.textContent = `${label}${bytes ? ` - ${bytes}` : ""} - ${message}`;
+  if (payload.status === "error") {
+    el.ollamaPullProgressText.textContent = payload.message || "Ollama pull failed.";
   }
 }
 
 async function useOllamaProvider() {
-  const model = el.ollamaModelSelect.value || state.ollama.models[0]?.name || "";
+  const model = selectedOllamaModel();
   if (!model) {
     setOllamaStatus("Choose an installed Ollama model first.", "Required");
     return;
@@ -3217,6 +3475,23 @@ async function useOllamaProvider() {
   } finally {
     el.useOllamaProvider.disabled = !state.ollama.running || !state.ollama.models.length;
   }
+}
+
+function useOllamaLocalRuntime() {
+  const model = selectedOllamaModel();
+  if (!state.ollama.running) {
+    setOllamaStatus("Start Ollama, then click Detect.", "Offline");
+    return;
+  }
+  if (!model) {
+    setOllamaStatus("Choose an installed Ollama model first.", "Required");
+    return;
+  }
+  el.inferenceSource.value = "ollama";
+  state.ollamaSelectedModel = model;
+  updateInferenceVisibility();
+  setOllamaStatus(`Ollama local chat is ready with ${model}.`, "Local");
+  syncQuickModelControls();
 }
 
 function renderApiProviderSelect() {
@@ -3555,15 +3830,23 @@ function syncQuickModelControls() {
   const source = el.inferenceSource.value;
   el.quickInferenceSource.value = source;
   renderQuickApiProviderSelect();
-  const localMode = source === "local";
-  el.quickApiProvider.classList.toggle("hidden", localMode);
-  el.quickApiProvider.disabled = localMode || !state.apiProviders.length;
-  if (localMode) {
+  const ggufMode = source === "local";
+  const ollamaMode = source === "ollama";
+  el.quickApiProvider.classList.toggle("hidden", ggufMode || ollamaMode);
+  el.quickApiProvider.disabled = ggufMode || ollamaMode || !state.apiProviders.length;
+  if (ggufMode) {
     const status = el.sidebarModelStatus?.textContent?.trim() || "";
     const selected = el.sidebarLocalModelPath?.selectedOptions?.[0]?.textContent || "";
     el.quickModelLabel.textContent = status && status !== "No model loaded"
       ? status
       : selected || "No local model loaded";
+  } else if (ollamaMode) {
+    const model = selectedOllamaModel();
+    el.quickModelLabel.textContent = model
+      ? `${model} via Ollama`
+      : state.ollama.running
+        ? "No Ollama model installed"
+        : "Ollama offline";
   } else {
     const provider = activeApiProvider();
     el.quickModelLabel.textContent = provider
@@ -4050,7 +4333,8 @@ async function autoSummarizeChat(options = {}) {
     el.chatSettingsStatus.textContent = `Summarizing the last ${sourceMessages.length} messages.`;
   }
   try {
-    const source = el.inferenceSource.value;
+    const uiSource = el.inferenceSource.value;
+    const source = backendInferenceSource(uiSource);
     const body = {
       source,
       messages: sourceMessages,
@@ -4060,16 +4344,7 @@ async function autoSummarizeChat(options = {}) {
       },
       max_tokens: 700,
     };
-    if (source === "cloud") {
-      const provider = activeApiProvider();
-      body.cloud = {
-        provider: provider ? inferCloudProvider(provider.base_url) : el.cloudProvider.value,
-        base_url: provider?.base_url || el.baseUrl.value,
-        model: provider?.default_model || selectedModelValue(el.cloudModelSelect, el.cloudModel),
-        api_key: provider ? "" : el.apiKey.value,
-      };
-      body.api_provider_id = provider?.id || null;
-    }
+    applyCloudSettingsForUiSource(body, uiSource);
     const response = await fetch("/api/chat/summary", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -5872,7 +6147,8 @@ function handleStreamEvent(rawEvent) {
 }
 
 function buildChatPayload(options = {}) {
-  const source = options.source || el.inferenceSource.value;
+  const uiSource = options.source || el.inferenceSource.value;
+  const source = backendInferenceSource(uiSource);
   const messages = options.messages || state.messages;
   const payload = {
     source,
@@ -5895,18 +6171,42 @@ function buildChatPayload(options = {}) {
     max_tokens: options.maxTokens === undefined ? Number(el.maxTokens.value) : options.maxTokens,
   };
 
-  if (source === "cloud") {
-    const provider = activeApiProvider();
-    const manualModel = selectedModelValue(el.cloudModelSelect, el.cloudModel);
-    payload.cloud = {
-      provider: provider ? inferCloudProvider(provider.base_url) : el.cloudProvider.value,
-      base_url: provider?.base_url || el.baseUrl.value,
-      model: provider?.default_model || manualModel,
-      api_key: provider ? "" : el.apiKey.value,
-    };
-    payload.api_provider_id = provider?.id || null;
-  }
+  applyCloudSettingsForUiSource(payload, uiSource);
 
+  return payload;
+}
+
+function backendInferenceSource(uiSource) {
+  return uiSource === "ollama" ? "cloud" : uiSource;
+}
+
+function ollamaCloudSettings() {
+  return {
+    provider: "ollama",
+    base_url: state.ollama.openai_base_url || "http://127.0.0.1:11434/v1",
+    model: selectedOllamaModel(),
+    api_key: "",
+  };
+}
+
+function applyCloudSettingsForUiSource(payload, uiSource) {
+  if (backendInferenceSource(uiSource) !== "cloud") {
+    return payload;
+  }
+  if (uiSource === "ollama") {
+    payload.cloud = ollamaCloudSettings();
+    payload.api_provider_id = null;
+    return payload;
+  }
+  const provider = activeApiProvider();
+  const manualModel = selectedModelValue(el.cloudModelSelect, el.cloudModel);
+  payload.cloud = {
+    provider: provider ? inferCloudProvider(provider.base_url) : el.cloudProvider.value,
+    base_url: provider?.base_url || el.baseUrl.value,
+    model: provider?.default_model || manualModel,
+    api_key: provider ? "" : el.apiKey.value,
+  };
+  payload.api_provider_id = provider?.id || null;
   return payload;
 }
 

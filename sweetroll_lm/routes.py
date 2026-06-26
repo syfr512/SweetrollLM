@@ -11,6 +11,7 @@ import subprocess
 import smtplib
 import shutil
 import time
+import uuid
 from typing import Any
 from email.mime.text import MIMEText
 from pathlib import Path
@@ -68,8 +69,10 @@ from .schemas import (
     LorebookSaveRequest,
     ModelDownloadJob,
     ModelDownloadRequest,
+    OllamaModelDetailResponse,
     OllamaModelInfo,
     OllamaProviderRegisterRequest,
+    OllamaPullJob,
     OllamaPullRequest,
     OllamaPullResponse,
     OllamaStatusResponse,
@@ -151,6 +154,8 @@ _external_fallback_config = ExternalApiFallbackConfig(
     model=settings.external_api_model,
     api_key=settings.external_api_key or None,
 )
+_ollama_pull_jobs_lock = threading.RLock()
+_ollama_pull_jobs: dict[str, OllamaPullJob] = {}
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -2740,6 +2745,8 @@ async def _ollama_status(base_url: str | None = None) -> OllamaStatusResponse:
             for item in payload.get("models", [])
             if isinstance(item, dict)
         ]
+        running_models = await _ollama_running_models(native_base)
+        models = _merge_ollama_running_status(models, running_models)
         return OllamaStatusResponse(
             running=True,
             base_url=native_base,
@@ -2768,7 +2775,95 @@ async def _ollama_status(base_url: str | None = None) -> OllamaStatusResponse:
         )
 
 
-def _ollama_model_info(item: dict[str, Any]) -> OllamaModelInfo:
+async def _ollama_running_models(base_url: str | None = None) -> list[OllamaModelInfo]:
+    native_base = _ollama_native_base_url(base_url)
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(f"{native_base}/api/ps")
+            response.raise_for_status()
+        payload = response.json()
+        return [
+            _ollama_model_info(item, loaded=True)
+            for item in payload.get("models", [])
+            if isinstance(item, dict)
+        ]
+    except Exception:
+        return []
+
+
+async def _ollama_model_detail(model: str, base_url: str | None = None) -> OllamaModelDetailResponse:
+    native_base = _ollama_native_base_url(base_url)
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            response = await client.post(f"{native_base}/api/show", json={"model": model})
+            if response.status_code >= 400:
+                return OllamaModelDetailResponse(
+                    model=model,
+                    message=(
+                        f"Ollama show returned HTTP {response.status_code}: "
+                        f"{response.text[:240]}"
+                    ),
+                )
+        payload = response.json()
+        return OllamaModelDetailResponse(
+            model=model,
+            modelfile=str(payload.get("modelfile") or ""),
+            parameters=str(payload.get("parameters") or ""),
+            template=str(payload.get("template") or ""),
+            system=str(payload.get("system") or ""),
+            license=str(payload.get("license") or ""),
+            details=payload.get("details") if isinstance(payload.get("details"), dict) else {},
+            model_info=payload.get("model_info") if isinstance(payload.get("model_info"), dict) else {},
+            capabilities=[
+                str(capability)
+                for capability in payload.get("capabilities", [])
+                if isinstance(capability, str)
+            ],
+            message="Model metadata loaded.",
+        )
+    except httpx.RequestError as exc:
+        return OllamaModelDetailResponse(
+            model=model,
+            message=f"Could not reach Ollama metadata endpoint: {exc}",
+        )
+    except Exception as exc:
+        return OllamaModelDetailResponse(
+            model=model,
+            message=f"Ollama metadata lookup failed: {exc}",
+        )
+
+
+def _merge_ollama_running_status(
+    models: list[OllamaModelInfo], running: list[OllamaModelInfo]
+) -> list[OllamaModelInfo]:
+    running_by_name = {
+        (item.name or item.model): item
+        for item in running
+        if item.name or item.model
+    }
+    merged: list[OllamaModelInfo] = []
+    seen: set[str] = set()
+    for model in models:
+        key = model.name or model.model
+        active = running_by_name.get(key)
+        if active:
+            model = model.model_copy(
+                update={
+                    "loaded": True,
+                    "expires_at": active.expires_at,
+                    "size_vram_bytes": active.size_vram_bytes,
+                    "capabilities": model.capabilities or active.capabilities,
+                }
+            )
+        merged.append(model)
+        seen.add(key)
+    for key, active in running_by_name.items():
+        if key not in seen:
+            merged.append(active)
+    return merged
+
+
+def _ollama_model_info(item: dict[str, Any], loaded: bool = False) -> OllamaModelInfo:
     details = item.get("details") if isinstance(item.get("details"), dict) else {}
     context_length = details.get("context_length")
     if not isinstance(context_length, int):
@@ -2778,11 +2873,14 @@ def _ollama_model_info(item: dict[str, Any]) -> OllamaModelInfo:
         model=str(item.get("model") or item.get("name") or "").strip(),
         modified_at=str(item.get("modified_at") or ""),
         size_bytes=int(item.get("size") or 0),
+        size_vram_bytes=int(item.get("size_vram") or 0),
         digest=str(item.get("digest") or ""),
         parameter_size=str(details.get("parameter_size") or ""),
         quantization_level=str(details.get("quantization_level") or ""),
         family=str(details.get("family") or ""),
         context_length=context_length,
+        expires_at=str(item.get("expires_at") or ""),
+        loaded=loaded,
         capabilities=[
             str(capability)
             for capability in item.get("capabilities", [])
@@ -2790,6 +2888,133 @@ def _ollama_model_info(item: dict[str, Any]) -> OllamaModelInfo:
         ],
         details=details,
     )
+
+
+def _start_ollama_pull_job(model: str) -> OllamaPullJob:
+    job = OllamaPullJob(
+        job_id=f"ollama-{uuid.uuid4().hex[:12]}",
+        model=model,
+        status="queued",
+        message=f"Queued Ollama pull for {model}.",
+    )
+    with _ollama_pull_jobs_lock:
+        _ollama_pull_jobs[job.job_id] = job
+    worker = threading.Thread(
+        target=_run_ollama_pull_job,
+        args=(job.job_id,),
+        daemon=True,
+    )
+    worker.start()
+    return job
+
+
+def _ollama_pull_snapshot(job_id: str) -> OllamaPullJob:
+    with _ollama_pull_jobs_lock:
+        job = _ollama_pull_jobs.get(job_id)
+        if job is None:
+            raise FileNotFoundError(job_id)
+        return job.model_copy(deep=True)
+
+
+def _update_ollama_pull_job(job_id: str, **updates: Any) -> OllamaPullJob | None:
+    with _ollama_pull_jobs_lock:
+        job = _ollama_pull_jobs.get(job_id)
+        if job is None:
+            return None
+        next_job = job.model_copy(update=updates)
+        _ollama_pull_jobs[job_id] = next_job
+        return next_job
+
+
+def _run_ollama_pull_job(job_id: str) -> None:
+    try:
+        job = _ollama_pull_snapshot(job_id)
+    except FileNotFoundError:
+        return
+
+    base_url = _ollama_native_base_url()
+    _update_ollama_pull_job(
+        job_id,
+        status="pulling",
+        message=f"Connecting to Ollama to pull {job.model}.",
+    )
+    last_completed = 0
+    last_total: int | None = None
+    last_digest = ""
+
+    try:
+        with httpx.Client(timeout=None) as client:
+            with client.stream(
+                "POST",
+                f"{base_url}/api/pull",
+                json={"model": job.model, "stream": True},
+            ) as response:
+                if response.status_code >= 400:
+                    body = response.read().decode("utf-8", errors="replace")
+                    _update_ollama_pull_job(
+                        job_id,
+                        status="error",
+                        message=(
+                            f"Ollama rejected pull with HTTP {response.status_code}: "
+                            f"{body[:240]}"
+                        ),
+                    )
+                    return
+
+                for line in response.iter_lines():
+                    if not line:
+                        continue
+                    try:
+                        payload = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+
+                    status_text = str(payload.get("status") or "Pulling model layers.")
+                    digest = str(payload.get("digest") or last_digest)
+                    completed = payload.get("completed")
+                    total = payload.get("total")
+                    if isinstance(completed, int):
+                        last_completed = completed
+                    if isinstance(total, int) and total > 0:
+                        last_total = total
+                    if digest:
+                        last_digest = digest
+                    percent = (
+                        min(100.0, (last_completed / last_total) * 100.0)
+                        if last_total
+                        else 0.0
+                    )
+                    _update_ollama_pull_job(
+                        job_id,
+                        status="pulling",
+                        percent=percent,
+                        completed_bytes=last_completed,
+                        total_bytes=last_total,
+                        digest=last_digest,
+                        message=status_text,
+                    )
+
+        _update_ollama_pull_job(
+            job_id,
+            status="completed",
+            percent=100.0,
+            completed_bytes=last_total or last_completed,
+            total_bytes=last_total,
+            digest=last_digest,
+            message=f"Ollama model '{job.model}' is available locally.",
+        )
+    except httpx.RequestError as exc:
+        _update_ollama_pull_job(
+            job_id,
+            status="error",
+            message=f"Could not reach Ollama at {base_url}: {exc}",
+        )
+    except Exception as exc:
+        _update_ollama_pull_job(
+            job_id,
+            status="error",
+            message=f"Ollama pull failed: {exc}",
+        )
 
 
 @router.get("/api-providers", response_model=list[ApiProviderProfile])
@@ -2823,43 +3048,64 @@ async def ollama_models() -> list[OllamaModelInfo]:
     return status.models
 
 
-@router.post("/ollama/pull", response_model=OllamaPullResponse)
-async def ollama_pull(request: OllamaPullRequest) -> OllamaPullResponse:
-    base_url = _ollama_native_base_url()
+@router.get("/ollama/ps", response_model=list[OllamaModelInfo])
+async def ollama_loaded_models() -> list[OllamaModelInfo]:
+    status = await _ollama_status()
+    if not status.running:
+        raise HTTPException(status_code=503, detail=status.message)
+    return await _ollama_running_models(status.base_url)
+
+
+@router.get("/ollama/show/{model:path}", response_model=OllamaModelDetailResponse)
+async def ollama_show(model: str) -> OllamaModelDetailResponse:
+    model = model.strip()
+    if not model:
+        raise HTTPException(status_code=400, detail="Ollama model name is required.")
+    status = await _ollama_status()
+    if not status.running:
+        raise HTTPException(status_code=503, detail=status.message)
+    return await _ollama_model_detail(model, status.base_url)
+
+
+@router.post("/ollama/pull", response_model=OllamaPullJob)
+async def ollama_pull(request: OllamaPullRequest) -> OllamaPullJob:
+    return _start_ollama_pull_job(request.model)
+
+
+@router.get("/ollama/pull/jobs/{job_id}", response_model=OllamaPullJob)
+async def ollama_pull_job(job_id: str) -> OllamaPullJob:
     try:
-        async with httpx.AsyncClient(timeout=None) as client:
-            response = await client.post(
-                f"{base_url}/api/pull",
-                json={"model": request.model, "stream": False},
-            )
-            if response.status_code >= 400:
-                return OllamaPullResponse(
-                    status="error",
-                    model=request.model,
-                    message=(
-                        f"Ollama rejected pull with HTTP {response.status_code}: "
-                        f"{response.text[:240]}"
-                    ),
+        return _ollama_pull_snapshot(job_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Ollama pull job not found.") from exc
+
+
+@router.get("/ollama/pull/progress")
+async def ollama_pull_progress(job_id: str) -> StreamingResponse:
+    async def events() -> AsyncIterator[str]:
+        while True:
+            try:
+                snapshot = _ollama_pull_snapshot(job_id)
+            except FileNotFoundError:
+                yield _event(
+                    {
+                        "type": "ollama_pull",
+                        "job_id": job_id,
+                        "status": "error",
+                        "message": "Ollama pull job not found.",
+                    }
                 )
-            data = response.json() if response.content else {}
-            return OllamaPullResponse(
-                status="completed",
-                model=request.model,
-                message=f"Ollama model '{request.model}' is available locally.",
-                raw=data if isinstance(data, dict) else {"response": data},
-            )
-    except httpx.RequestError as exc:
-        return OllamaPullResponse(
-            status="error",
-            model=request.model,
-            message=f"Could not reach Ollama at {base_url}: {exc}",
-        )
-    except Exception as exc:
-        return OllamaPullResponse(
-            status="error",
-            model=request.model,
-            message=f"Ollama pull failed: {exc}",
-        )
+                break
+            yield _event({"type": "ollama_pull", **snapshot.model_dump()})
+            if snapshot.status in {"completed", "error"}:
+                break
+            await asyncio.sleep(0.35)
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @router.post("/ollama/register", response_model=ApiProviderProfile)

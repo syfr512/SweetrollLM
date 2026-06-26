@@ -4,17 +4,16 @@ SweetrollLM is aiming to become a local-first alternative for users who want the
 
 This roadmap keeps the project direction public and easy to index.
 
-## 1. Deeper Ollama Support
+## 1. Ollama Workflow Maturity
 
-SweetrollLM now includes first-class Ollama sidecar support for detecting a local Ollama server, listing installed models, validating the OpenAI-compatible chat endpoint, pulling models, and registering Ollama as a saved provider profile.
+SweetrollLM now includes first-class Ollama support for detecting a local Ollama server, listing installed models, inspecting loaded models, showing model context/size/family/quantization metadata, validating the OpenAI-compatible chat endpoint, streaming pull progress, selecting Ollama as a local runtime source, and registering Ollama as a saved provider profile.
 
-The next step is making the Ollama workflow richer:
+The next step is making the Ollama workflow feel as native as the GGUF manager:
 
-- Show model context, size, family, quantization, and parameter metadata.
 - Start, stop, and switch models without manual endpoint setup where the local environment allows it.
-- Surface pull progress in the same style as the Hugging Face GGUF downloader.
 - Recommend Ollama models by hardware tier.
 - Route chat, vision, and workspace tasks through Ollama where model capability allows.
+- Add clearer capability warnings for chat-only, vision, and tool-capable Ollama models.
 
 This would make SweetrollLM easier for users who do not want to manage GGUF files manually.
 
