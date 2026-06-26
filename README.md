@@ -28,7 +28,7 @@ SweetrollLM blends the character-card and lorebook comfort of SillyTavern with t
 
 ![SweetrollLM model marketplace](docs/screenshots/model-marketplace.png)
 
-### Future Gallery Slots
+<!--### Future Gallery Slots
 
 Drop additional project media here as the UI evolves:
 
@@ -38,7 +38,7 @@ Drop additional project media here as the UI evolves:
 - `docs/screenshots/settings-providers.png` - provider, vision, SMTP, and theme configuration.
 - `docs/screenshots/cookbook-download.png` - GGUF cookbook search and download flow.
 - `docs/media/demo-chat-flow.gif` - chat-native image attachment and auto-summary flow.
-- `docs/media/workspace-demo.mp4` - workspace automation or coding session walkthrough.
+- `docs/media/workspace-demo.mp4` - workspace automation or coding session walkthrough.-->
 
 ## What Makes It Different
 
