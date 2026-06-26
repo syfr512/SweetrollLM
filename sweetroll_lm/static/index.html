@@ -20,10 +20,10 @@
     <meta name="msapplication-TileImage" content="/static/assets/icon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Crimson+Pro:wght@400;600&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/static/css/tailwind.css?v=cinzel-crimson-typography-20260613" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/static/css/tailwind.css?v=obsidian-ui-20260626a" />
     <script defer src="/static/js/markdown.js"></script>
-    <script defer src="/static/js/app.js?v=transparency-hotfix-20260613"></script>
+    <script defer src="/static/js/app.js?v=obsidian-ui-20260626a"></script>
   </head>
   <body>
     <div id="startupOverlay" class="startup-overlay" aria-live="polite">
@@ -47,7 +47,68 @@
             <h1>SweetrollLM</h1>
             <p id="connectionStatus">Starting</p>
           </div>
-          <button id="openModelMarket" class="icon-button" type="button" title="Model Marketplace" aria-label="Open model marketplace">
+        </div>
+
+        <nav class="side-menu" aria-label="SweetrollLM sections">
+          <button class="side-menu-item active" type="button" data-side-action="home">
+            <span class="side-menu-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7A2.5 2.5 0 0 1 17.5 16H9l-5 4V6.5Z" /></svg>
+            </span>
+            <span>Chat</span>
+          </button>
+          <button id="openWorkspace" class="side-menu-item" type="button" data-side-action="workspace">
+            <span class="side-menu-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z" /><path d="M4 9h16" /><path d="M8 13h4" /><path d="M8 16h8" /></svg>
+            </span>
+            <span>Workspace</span>
+          </button>
+          <button class="side-menu-item" type="button" data-side-action="settings">
+            <span class="side-menu-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Z" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1A2 2 0 1 1 7.1 4l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.6V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1A2 2 0 1 1 20 7.1l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" /></svg>
+            </span>
+            <span>Settings</span>
+          </button>
+          <button id="openCharacterLibrary" class="side-menu-item" type="button" data-side-action="characters">
+            <span class="side-menu-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M20 21a8 8 0 0 0-16 0" /><path d="M12 13a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z" /></svg>
+            </span>
+            <span>Characters</span>
+          </button>
+          <button id="openPersonaRegistry" class="side-menu-item" type="button" data-side-action="personas">
+            <span class="side-menu-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M15 19a6 6 0 0 0-12 0" /><path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" /><path d="M20 8v8" /><path d="M16 12h8" /></svg>
+            </span>
+            <span>Personas</span>
+          </button>
+          <button id="openLorebookEditor" class="side-menu-item" type="button" data-side-action="lorebooks">
+            <span class="side-menu-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z" /></svg>
+            </span>
+            <span>Lorebooks</span>
+          </button>
+          <button id="openModelMarket" class="side-menu-item" type="button" data-side-action="models">
+            <span class="side-menu-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z" /><path d="M12 12v8.3" /><path d="m12 12 7.5-4.2" /><path d="M12 12 4.5 7.8" /></svg>
+            </span>
+            <span>Models</span>
+          </button>
+        </nav>
+
+        <section class="panel utility-panel" data-settings-panel>
+          <div class="panel-title">
+            <h2>Actions</h2>
+          </div>
+          <div class="utility-grid">
+            <button id="toggleExtensions" class="secondary-button" type="button" aria-expanded="false" aria-controls="extensionsDrawer">Tool Settings</button>
+            <button id="openConsoleLogs" class="secondary-button" type="button">Console Logs</button>
+            <button id="exportChat" class="secondary-button" type="button">Export</button>
+            <button id="clearChat" class="secondary-button" type="button">Clear</button>
+            <button id="deleteChat" class="secondary-button danger-button utility-danger" type="button">Delete Chat</button>
+          </div>
+        </section>
+
+        <div class="brand-actions hidden" aria-hidden="true">
+          <button class="icon-button" type="button" title="Model Marketplace" aria-label="Open model marketplace">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z" />
               <path d="M12 12 4.5 7.8" />
@@ -55,13 +116,13 @@
               <path d="m12 12 7.5-4.2" />
             </svg>
           </button>
-          <button id="openCharacterLibrary" class="icon-button" type="button" title="Character Cards" aria-label="Open character cards">
+          <button class="icon-button" type="button" title="Character Cards" aria-label="Open character cards">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M20 21a8 8 0 0 0-16 0" />
               <path d="M12 13a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z" />
             </svg>
           </button>
-          <button id="openLorebookEditor" class="icon-button" type="button" title="Lorebooks" aria-label="Open lorebook editor">
+          <button class="icon-button" type="button" title="Lorebooks" aria-label="Open lorebook editor">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
               <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z" />
@@ -71,10 +132,33 @@
           </button>
         </div>
 
-        <section class="panel accordion-section" data-accordion-section data-accordion-key="inference">
+        <section class="panel accordion-section feature-nav-section hidden" data-accordion-section data-accordion-key="workspace">
           <div class="panel-title accordion-title">
             <button class="section-toggle" type="button" data-accordion-toggle aria-expanded="true">
-              <span class="accordion-arrow" aria-hidden="true">▾</span>
+              <span class="accordion-arrow" aria-hidden="true">v</span>
+              <span>Workspace</span>
+            </button>
+            <span class="badge">Agentic</span>
+          </div>
+          <div class="accordion-body" data-accordion-body>
+            <div class="feature-module-card workspace-module-card">
+              <div>
+                <h3>Agentic Workspace</h3>
+                <p>Folder-aware automation sandbox for files, terminal tools, and iterative project builds.</p>
+              </div>
+              <div class="feature-module-meta">
+                <span>Sandbox</span>
+                <strong>./workspace</strong>
+              </div>
+              <button class="primary-button compact-wide-button" type="button" data-side-action="workspace">Launch Workspace</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel accordion-section" data-accordion-section data-accordion-key="inference" data-settings-panel>
+          <div class="panel-title accordion-title">
+            <button class="section-toggle" type="button" data-accordion-toggle aria-expanded="true">
+              <span class="accordion-arrow" aria-hidden="true">v</span>
               <span>Inference Source</span>
             </button>
             <span id="sourceBadge" class="badge badge-local">Local</span>
@@ -106,10 +190,10 @@
           </div>
         </section>
 
-        <section id="cloudPanel" class="panel accordion-section hidden" data-accordion-section data-accordion-key="cloud">
+        <section id="cloudPanel" class="panel accordion-section hidden" data-accordion-section data-accordion-key="cloud" data-settings-panel>
           <div class="panel-title accordion-title">
             <button class="section-toggle" type="button" data-accordion-toggle aria-expanded="true">
-              <span class="accordion-arrow" aria-hidden="true">▾</span>
+              <span class="accordion-arrow" aria-hidden="true">v</span>
               <span>Cloud API</span>
             </button>
             <span class="badge">Online</span>
@@ -176,10 +260,10 @@
           </div>
         </section>
 
-        <section class="panel accordion-section" data-accordion-section data-accordion-key="generation" data-accordion-default-collapsed="true">
+        <section class="panel accordion-section" data-accordion-section data-accordion-key="generation" data-accordion-default-collapsed="true" data-settings-panel>
           <div class="panel-title accordion-title">
             <button class="section-toggle" type="button" data-accordion-toggle aria-expanded="false">
-              <span class="accordion-arrow" aria-hidden="true">▸</span>
+              <span class="accordion-arrow" aria-hidden="true">&gt;</span>
               <span>Generation</span>
             </button>
           </div>
@@ -187,7 +271,7 @@
             <label class="field">
               <span>App Theme</span>
               <select id="appTheme" class="input">
-                <option value="aurora-dark">Aurora Dark</option>
+                <option value="aurora-dark">Obsidian Black</option>
                 <option value="sweetroll-light">Sweetroll Light</option>
               </select>
             </label>
@@ -234,11 +318,11 @@
           </div>
         </section>
 
-        <section class="panel panel-grow accordion-section session-accordion" data-accordion-section data-accordion-key="sessions">
+        <section class="panel panel-grow accordion-section session-accordion" data-accordion-section data-accordion-key="sessions" data-chat-panel>
           <div class="panel-title accordion-title">
             <button class="section-toggle" type="button" data-accordion-toggle aria-expanded="true">
-              <span class="accordion-arrow" aria-hidden="true">▾</span>
-              <span>Characters &amp; Chats</span>
+              <span class="accordion-arrow" aria-hidden="true">v</span>
+              <span>Character Chats</span>
             </button>
             <button id="editCurrentCharacter" class="ghost-button" type="button">Cards</button>
           </div>
@@ -246,7 +330,7 @@
             <div class="sidebar-subsection">
               <div class="subsection-title">
                 <h3>User Persona</h3>
-                <button id="openPersonaRegistry" class="ghost-button" type="button">Personas</button>
+                <button class="ghost-button" type="button" data-side-action="personas">Personas</button>
               </div>
               <label class="field">
                 <span>Active Persona</span>
@@ -297,17 +381,21 @@
               </svg>
             </button>
             <div>
-              <h2 id="chatTitle">No Character Selected</h2>
-              <p id="chatSubtitle">Create or import a card to begin</p>
+              <h2 id="chatTitle">SweetrollLM</h2>
+              <p id="chatSubtitle">Ready for chat, characters, and workspace automation.</p>
             </div>
           </div>
+          <div class="quick-model-bar" aria-label="Active model controls">
+            <select id="quickInferenceSource" class="quick-select" title="Inference source">
+              <option value="local">Local</option>
+              <option value="cloud">Cloud</option>
+            </select>
+            <select id="quickApiProvider" class="quick-select" title="Active cloud provider"></select>
+            <span id="quickModelLabel" class="quick-model-label">No model selected</span>
+          </div>
           <div class="chat-actions">
-            <button id="toggleExtensions" class="secondary-button" type="button" aria-expanded="false" aria-controls="extensionsDrawer">Extensions</button>
-            <button id="openConsoleLogs" class="secondary-button" type="button">View Console Logs</button>
+            <button id="openChatSettings" class="secondary-button" type="button">Chat Settings</button>
             <button id="newChat" class="secondary-button" type="button">New Chat</button>
-            <button id="exportChat" class="secondary-button" type="button">Export Logs</button>
-            <button id="deleteChat" class="secondary-button danger-button" type="button">Delete Entire Chat</button>
-            <button id="clearChat" class="secondary-button" type="button">Clear Chat</button>
           </div>
         </header>
 
@@ -329,6 +417,8 @@
                 <label class="field">
                   <span>Backend</span>
                   <select id="imageProvider" class="input">
+                    <option value="openai">OpenAI Images API</option>
+                    <option value="openrouter">OpenRouter / Compatible</option>
                     <option value="comfyui">ComfyUI /prompt</option>
                     <option value="stable_diffusion">Stable Diffusion API</option>
                     <option value="flux">Flux-Compatible</option>
@@ -336,6 +426,12 @@
                     <option value="custom">Custom JSON</option>
                   </select>
                 </label>
+                <label class="field">
+                  <span>API Profile</span>
+                  <select id="imageApiProvider" class="input"></select>
+                </label>
+              </div>
+              <div class="two-col">
                 <label class="field">
                   <span>Aspect</span>
                   <select id="imageAspectRatio" class="input">
@@ -399,14 +495,21 @@
                 </select>
               </label>
               <label class="field">
+                <span>API Profile</span>
+                <select id="visionApiProvider" class="input"></select>
+              </label>
+              <label class="field">
                 <span>Vision Model</span>
                 <select id="visionModelSelect" class="input"></select>
                 <input id="visionModel" class="input hidden" placeholder="Custom vision model slug" />
               </label>
+              <label class="field">
+                <span>Caption Prompt</span>
+                <textarea id="visionPrompt" class="input textarea compact-textarea" rows="3">Describe the image in practical detail for a roleplay or assistant conversation. Include visible subjects, setting, mood, readable text, and anything the character should know.</textarea>
+              </label>
               <div class="button-row">
                 <button id="saveVisionConfig" class="secondary-button" type="button">Save Configuration</button>
               </div>
-              <div id="visionAttachmentPreview" class="attachment-preview hidden"></div>
               <p id="visionCaptionStatus" class="muted">Caption context is injected invisibly into the next generations.</p>
             </section>
           </div>
@@ -415,12 +518,19 @@
         <section id="chatMessages" class="chat-messages" aria-live="polite"></section>
 
         <form id="chatForm" class="composer">
+          <div id="chatAttachmentPreview" class="composer-attachment-preview hidden"></div>
           <button id="attachImage" class="icon-button attach-button" type="button" title="Attach image" aria-label="Attach image">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M21.4 11.6 12 21a6 6 0 0 1-8.5-8.5l9.8-9.8a4 4 0 1 1 5.7 5.7L9.4 18a2 2 0 1 1-2.8-2.8l8.8-8.8" />
             </svg>
           </button>
           <input id="chatImageInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden />
+          <button id="quickGenerateImage" class="icon-button attach-button" type="button" title="Generate image from current prompt" aria-label="Generate image from current prompt">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 3 13.8 8.2 19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z" />
+              <path d="M18 15l.8 2.2L21 18l-2.2.8L18 21l-.8-2.2L15 18l2.2-.8L18 15Z" />
+            </svg>
+          </button>
           <textarea id="messageInput" class="composer-input" rows="1" placeholder="Message"></textarea>
           <button id="sendButton" class="send-button" type="submit">Send</button>
         </form>
@@ -430,6 +540,163 @@
     <div id="bulkActionBar" class="bulk-action-bar hidden" aria-live="polite">
       <span id="bulkSelectionCount">0 selected</span>
       <button id="deleteSelectedMessages" class="danger-button" type="button">Delete Selected</button>
+    </div>
+
+    <div id="workspace-modal" class="modal-overlay workspace-overlay hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="workspace-title">
+      <div id="workspaceWindow" class="modal-window workspace-window">
+        <header id="workspaceDragHandle" class="modal-header workspace-header">
+          <div>
+            <h2 id="workspace-title">Agentic Workspace</h2>
+            <p>File-aware agent runtime isolated inside ./workspace.</p>
+          </div>
+          <div class="compact-actions button-row">
+            <button id="toggleWorkspaceFiles" class="secondary-button" type="button" aria-pressed="true">Files</button>
+            <button id="toggleWorkspaceConfig" class="secondary-button" type="button" aria-pressed="true">Setup</button>
+            <button id="workspaceRefresh" class="secondary-button" type="button">Refresh</button>
+            <button id="closeWorkspace" class="icon-button close-button" type="button" title="Close" aria-label="Close workspace">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M18 6 6 18" />
+                <path d="m6 6 12 12" />
+              </svg>
+            </button>
+          </div>
+        </header>
+        <section class="workspace-grid">
+          <aside class="workspace-panel workspace-file-panel">
+            <div class="workspace-panel-title">
+              <div>
+                <h3>Files &amp; Folders</h3>
+                <p>Sandboxed to ./workspace</p>
+              </div>
+              <span class="badge badge-local">Local</span>
+            </div>
+            <div class="button-row compact-actions">
+              <button id="workspaceNewFolder" class="secondary-button" type="button">New Folder</button>
+              <button id="workspaceDeletePath" class="secondary-button danger-button" type="button">Delete</button>
+              <button id="workspaceEditMetadata" class="ghost-button" type="button">Metadata</button>
+            </div>
+            <div id="workspaceTree" class="workspace-tree" role="tree"></div>
+            <p id="workspacePathStatus" class="muted">No folder selected.</p>
+            <div class="workspace-history-block">
+              <div class="workspace-panel-title compact-title">
+                <div>
+                  <h3>Recent Workspace Chats</h3>
+                  <p>Folder-scoped context threads</p>
+                </div>
+                <button id="workspaceNewChat" class="ghost-button" type="button">New</button>
+              </div>
+              <div id="workspaceChatList" class="workspace-chat-list"></div>
+              <div class="control-button-row">
+                <button id="workspaceClearChat" class="secondary-button context-flush-btn" type="button">Clear Thread</button>
+                <button id="workspaceContextFlush" class="ghost-button context-flush-btn" type="button">Flush Context</button>
+              </div>
+            </div>
+          </aside>
+
+          <section class="workspace-panel workspace-agent-zone">
+            <div class="workspace-panel-title">
+              <div>
+                <h3>Agent Interaction Zone</h3>
+                <p>Prompt, approve, and watch execution output.</p>
+              </div>
+              <span id="workspaceModeBadge" class="badge">Full Access</span>
+            </div>
+            <div id="workspaceChatLog" class="workspace-chat-log" aria-live="polite">
+              <article class="workspace-message assistant">
+                <strong>Workspace ready.</strong>
+                <p>Ask the assigned agent to inspect files, draft changes, or plan tasks inside the sandbox.</p>
+              </article>
+            </div>
+            <pre id="workspaceExecutionLog" class="workspace-execution-log hidden"></pre>
+            <form id="workspaceForm" class="workspace-composer">
+              <div class="workspace-input-stack">
+                <div id="workspaceAttachmentPreview" class="composer-attachment-preview hidden"></div>
+                <div class="workspace-input-row">
+                  <button id="workspaceAttachImage" class="icon-button attach-button" type="button" title="Attach screenshot or image" aria-label="Attach screenshot or image">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M21.4 11.6 12 21a6 6 0 0 1-8.5-8.5l9.8-9.8a4 4 0 1 1 5.7 5.7L9.4 18a2 2 0 1 1-2.8-2.8l8.8-8.8" />
+                    </svg>
+                  </button>
+                  <input id="workspaceImageInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden />
+                  <textarea id="workspacePrompt" class="input textarea" rows="2" placeholder="Ask the workspace agent what to inspect or build..."></textarea>
+                </div>
+              </div>
+              <div class="workspace-composer-actions">
+                <select id="workspaceControlLevel" class="workspace-mode-select" aria-label="Agent control level">
+                  <option value="read_only">Read-Only</option>
+                  <option value="ask_first" selected>Ask First</option>
+                  <option value="full_access">Full Access</option>
+                </select>
+                <button id="workspaceSend" class="primary-button" type="submit">Run Agent</button>
+                <button id="workspaceStop" class="secondary-button danger-button stop-generation-btn" type="button" title="Stop Generation" aria-label="Stop Generation" disabled>
+                  <span aria-hidden="true">■</span>
+                  <span>Stop</span>
+                </button>
+              </div>
+            </form>
+          </section>
+
+          <aside class="workspace-panel workspace-config-panel">
+            <div class="workspace-panel-title">
+              <div>
+                <h3>Agent Setup</h3>
+                <p>Attach a character card or run from a clean system prompt.</p>
+              </div>
+            </div>
+            <div id="workspaceAgentBase" class="workspace-static-pill">Base system prompt</div>
+            <label id="workspaceAgentCharacterField" class="field hidden">
+              <span>Agent Assignment</span>
+              <select id="workspaceAgentCharacter" class="input">
+                <option value="">Base System Prompt</option>
+              </select>
+            </label>
+            <details class="workspace-guardrail-card workspace-disclosure">
+              <summary>Guardrails</summary>
+              <p><strong>Read-Only:</strong> scans and reads only.</p>
+              <p><strong>Ask First:</strong> pauses before writes, deletes, folders, or shell commands.</p>
+              <p><strong>Full Access:</strong> executes approved tool calls inside ./workspace.</p>
+            </details>
+            <details class="workspace-guardrail-card workspace-email-card workspace-disclosure">
+              <summary>Email Setup</summary>
+              <p>SMTP credentials stay local in sweetroll_lm/.env. Passwords are write-only from this screen.</p>
+              <label class="field">
+                <span>Provider Preset</span>
+                <select id="workspaceEmailProvider" class="input">
+                  <option value="gmail">Gmail / Google Workspace</option>
+                  <option value="outlook">Outlook / Hotmail / Live</option>
+                  <option value="yahoo">Yahoo Mail</option>
+                  <option value="zoho">Zoho Mail</option>
+                  <option value="proton">Proton Mail Bridge</option>
+                  <option value="custom">Custom SMTP</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>SMTP Server</span>
+                <input id="workspaceSmtpServer" class="input" placeholder="smtp.gmail.com" />
+              </label>
+              <div class="two-col">
+                <label class="field">
+                  <span>Port</span>
+                  <input id="workspaceSmtpPort" class="input" type="number" min="1" max="65535" value="587" />
+                </label>
+                <label class="field">
+                  <span>Email</span>
+                  <input id="workspaceSmtpEmail" class="input" type="email" placeholder="you@example.com" />
+                </label>
+              </div>
+              <label class="field">
+                <span>Password / App Password</span>
+                <input id="workspaceSmtpPassword" class="input" type="password" autocomplete="off" placeholder="Leave blank to keep saved password" />
+              </label>
+              <div class="button-row compact-actions">
+                <button id="workspaceSaveEmailSettings" class="primary-button" type="button">Save SMTP</button>
+                <button id="workspaceTestEmailSettings" class="secondary-button" type="button">Test Login</button>
+              </div>
+              <p id="workspaceEmailStatus" class="muted">Email automation can also pivot to browser workflows when SMTP is unavailable.</p>
+            </details>
+          </aside>
+        </section>
+      </div>
     </div>
 
     <div id="console-logs-modal" class="modal-overlay hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="console-logs-title">
@@ -828,7 +1095,7 @@
         <header class="modal-header">
           <div>
             <h2 id="character-modal-title">Character Cards</h2>
-            <p>Create, save, and switch local roleplay profiles.</p>
+            <p>Click any saved card to start chatting with it, or edit its details here.</p>
           </div>
           <button id="closeCharacterLibrary" class="icon-button close-button" type="button" title="Close" aria-label="Close character cards">
             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -906,8 +1173,8 @@
               <textarea id="characterEditorFirstMessage" class="input textarea compact-textarea">Welcome to SweetrollLM! Pull up a chair by the hearth and get comfortable. What kind of adventure or code are we cooking up today?</textarea>
             </label>
             <div class="button-row">
-              <button id="saveCharacter" class="primary-button" type="button">Save Card</button>
-              <button id="useCharacter" class="secondary-button" type="button">Use Card</button>
+              <button id="saveCharacter" class="primary-button" type="button">Create Card</button>
+              <button id="useCharacter" class="secondary-button" type="button">Start Chat</button>
               <button id="exportCharacter" class="secondary-button" type="button">Export Character</button>
               <button id="deleteCharacter" class="secondary-button danger-button" type="button">Delete</button>
             </div>
@@ -972,7 +1239,7 @@
               <span>Set as Global Default</span>
             </label>
             <div class="button-row">
-              <button id="savePersona" class="primary-button" type="button">Save Persona</button>
+              <button id="savePersona" class="primary-button" type="button">Create Persona</button>
               <button id="usePersona" class="secondary-button" type="button">Use Persona</button>
               <button id="deletePersona" class="secondary-button danger-button" type="button">Delete</button>
             </div>
@@ -999,6 +1266,66 @@
         <div class="button-row prompt-actions">
           <button id="confirmNewChat" class="primary-button" type="button">Archive &amp; New Chat</button>
           <button id="cancelNewChatSecondary" class="secondary-button" type="button">Keep Current Timeline</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="chat-settings-modal" class="modal-overlay hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="chat-settings-title">
+      <div class="modal-window prompt-window">
+        <header class="modal-header">
+          <div>
+            <h2 id="chat-settings-title">Chat Settings</h2>
+            <p>Apply persona and lorebook context to this chat timeline only.</p>
+          </div>
+          <button id="closeChatSettings" class="icon-button close-button" type="button" title="Close" aria-label="Close chat settings">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
+        </header>
+        <div class="chat-settings-body">
+          <label class="field">
+            <span>Persona for this chat</span>
+            <select id="chatPersonaSelect" class="input"></select>
+          </label>
+          <label class="field">
+            <span>Lorebook for this chat</span>
+            <select id="chatLorebookSelect" class="input"></select>
+          </label>
+          <label class="toggle-row switch-row">
+            <input id="chatLorebookEnabled" type="checkbox" />
+            <span>Enable selected lorebook for this chat</span>
+          </label>
+          <label class="field">
+            <span>Long Summary</span>
+            <textarea id="chatSummaryText" class="input textarea compact-textarea" rows="5" placeholder="Persistent continuity notes for this specific chat timeline."></textarea>
+          </label>
+          <label class="toggle-row switch-row">
+            <input id="chatAutoSummaryEnabled" type="checkbox" />
+            <span>Auto-summarize this chat after new replies</span>
+          </label>
+          <div class="summary-tools-row">
+            <label class="field compact-field">
+              <span>Messages to summarize</span>
+              <input id="chatSummaryCount" class="input" type="number" min="1" max="100" value="10" />
+            </label>
+            <button id="autoSummarizeChat" class="secondary-button" type="button">Auto Summary</button>
+          </div>
+          <section class="chat-gallery-section">
+            <div class="panel-title compact-title">
+              <h2>Chat Gallery</h2>
+              <span id="chatGalleryCount" class="badge">0</span>
+            </div>
+            <div id="chatGalleryGrid" class="chat-gallery-grid">
+              <div class="empty-state compact-empty">Images sent in this timeline appear here.</div>
+            </div>
+          </section>
+          <div class="button-row prompt-actions">
+            <button id="saveChatSettings" class="primary-button" type="button">Apply Chat Settings</button>
+            <button id="clearChatSettings" class="secondary-button" type="button">Use Global Defaults</button>
+          </div>
+          <p id="chatSettingsStatus" class="muted">These overrides are saved with the current chat file.</p>
         </div>
       </div>
     </div>
@@ -1047,7 +1374,7 @@
             </div>
             <div id="loreEntryList" class="entry-list"></div>
             <div class="button-row">
-              <button id="saveLorebook" class="primary-button" type="button">Save Lorebook</button>
+              <button id="saveLorebook" class="primary-button" type="button">Create Lorebook</button>
               <button id="useLorebook" class="secondary-button" type="button">Use Session</button>
               <button id="deleteLorebook" class="secondary-button danger-button" type="button">Delete</button>
             </div>

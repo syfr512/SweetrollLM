@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from .config import settings
+from .secrets import is_protected_secret, protect_secret, secret_protection_available, unprotect_secret
 from .schemas import (
     AppAppearanceSettings,
     ApiProviderProfile,
@@ -27,6 +28,9 @@ from .schemas import (
     LorebookSaveRequest,
     UserPersonaProfile,
     UserPersonaSaveRequest,
+    WorkspaceChatMessage,
+    WorkspaceChatSaveRequest,
+    WorkspaceChatSession,
     utc_now_iso,
 )
 
@@ -41,6 +45,8 @@ STORAGE_FOLDERS = (
     settings.extensions_dir,
     settings.assets_dir,
     settings.logs_dir,
+    settings.workspace_dir,
+    settings.workspace_chats_dir,
 )
 
 ALLOWED_ASSET_MIME_TYPES = {
@@ -177,6 +183,12 @@ def save_chat_session(request: ChatSessionSaveRequest) -> ChatSession:
     chat = ChatSession(
         id=chat_id,
         character_id=request.character_id,
+        persona_id=request.persona_id,
+        lorebook_id=request.lorebook_id,
+        lorebook_enabled=request.lorebook_enabled,
+        chat_summary=(request.chat_summary or "").strip(),
+        auto_summary_enabled=bool(request.auto_summary_enabled),
+        summary_message_count=max(1, int(request.summary_message_count or 10)),
         title=(request.title or _chat_title(messages)).strip()[:120] or "Untitled Chat",
         messages=messages,
         created_at=created_at,
@@ -193,8 +205,115 @@ def delete_chat_session(chat_id: str) -> None:
     path.unlink()
 
 
+def list_workspace_chat_sessions(folder_path: str | None = None) -> list[WorkspaceChatSession]:
+    ensure_storage()
+    chats = [
+        _read_json_file(path, WorkspaceChatSession)
+        for path in sorted(
+            settings.workspace_chats_dir.glob("*.json"),
+            key=lambda item: item.stat().st_mtime,
+            reverse=True,
+        )
+    ]
+    sessions = [chat for chat in chats if chat is not None]
+    if folder_path is not None:
+        normalized = _normalize_workspace_folder_path(folder_path)
+        sessions = [chat for chat in sessions if chat.folder_path == normalized]
+    return sessions
+
+
+def get_workspace_chat_session(chat_id: str) -> WorkspaceChatSession:
+    path = _json_path(settings.workspace_chats_dir, chat_id)
+    chat = _read_json_file(path, WorkspaceChatSession)
+    if chat is None:
+        raise FileNotFoundError(f"Workspace chat session not found: {chat_id}")
+    return chat
+
+
+def save_workspace_chat_session(
+    request: WorkspaceChatSaveRequest,
+) -> WorkspaceChatSession:
+    ensure_storage()
+    chat_id = _safe_id(request.id) if request.id else new_workspace_chat_id()
+    path = _json_path(settings.workspace_chats_dir, chat_id)
+    created_at = utc_now_iso()
+
+    if path.exists():
+        existing = _read_json_file(path, WorkspaceChatSession)
+        if existing:
+            created_at = existing.created_at
+
+    messages = [
+        WorkspaceChatMessage(
+            role=message.role,
+            content=message.content,
+            timestamp=message.timestamp or utc_now_iso(),
+        )
+        for message in request.messages
+        if message.content.strip()
+    ]
+    chat = WorkspaceChatSession(
+        id=chat_id,
+        folder_path=_normalize_workspace_folder_path(request.folder_path),
+        character_id=request.character_id,
+        title=(request.title or _workspace_chat_title(messages)).strip()[:120]
+        or "Workspace Chat",
+        messages=messages,
+        created_at=created_at,
+        updated_at=utc_now_iso(),
+    )
+    _write_json_file(path, chat.model_dump())
+    return chat
+
+
+def clear_workspace_chat_session(chat_id: str) -> WorkspaceChatSession:
+    session = get_workspace_chat_session(chat_id)
+    return save_workspace_chat_session(
+        WorkspaceChatSaveRequest(
+            id=session.id,
+            folder_path=session.folder_path,
+            character_id=session.character_id,
+            title=session.title,
+            messages=[],
+        )
+    )
+
+
+def prune_workspace_chat_tools(chat_id: str) -> WorkspaceChatSession:
+    session = get_workspace_chat_session(chat_id)
+    pruned_messages = [
+        WorkspaceChatMessage(
+            role=message.role,
+            content=message.content,
+            timestamp=message.timestamp or utc_now_iso(),
+        )
+        for message in session.messages
+        if message.role == "user" and message.content.strip()
+    ]
+    return save_workspace_chat_session(
+        WorkspaceChatSaveRequest(
+            id=session.id,
+            folder_path=session.folder_path,
+            character_id=session.character_id,
+            title=session.title,
+            messages=pruned_messages,
+        )
+    )
+
+
+def delete_workspace_chat_session(chat_id: str) -> None:
+    path = _json_path(settings.workspace_chats_dir, chat_id)
+    if not path.exists():
+        raise FileNotFoundError(f"Workspace chat session not found: {chat_id}")
+    path.unlink()
+
+
 def new_chat_id() -> str:
     return f"chat-{uuid.uuid4().hex[:12]}"
+
+
+def new_workspace_chat_id() -> str:
+    return f"workspace-chat-{uuid.uuid4().hex[:12]}"
 
 
 def list_api_providers() -> list[ApiProviderProfile]:
@@ -494,13 +613,15 @@ def save_persona(request: UserPersonaSaveRequest) -> UserPersonaProfile:
     persona_id = _safe_id(request.id) if request.id else _new_id(request.name)
     path = _json_path(settings.personas_dir, persona_id)
     created_at = utc_now_iso()
+    existing_personas = list_personas()
 
     if path.exists():
         existing = _read_json_file(path, UserPersonaProfile)
         if existing:
             created_at = existing.created_at
 
-    if request.is_default:
+    is_default = request.is_default or not existing_personas
+    if is_default:
         _clear_default_personas(except_id=persona_id)
 
     persona = UserPersonaProfile(
@@ -509,7 +630,7 @@ def save_persona(request: UserPersonaSaveRequest) -> UserPersonaProfile:
         description=request.description.strip(),
         avatar_url=request.avatar_url.strip(),
         avatar_file=request.avatar_file.strip(),
-        is_default=request.is_default,
+        is_default=is_default,
         created_at=created_at,
         updated_at=utc_now_iso(),
     )
@@ -749,13 +870,23 @@ def _read_api_provider_registry() -> list[ApiProviderProfile]:
         return []
 
     providers: list[ApiProviderProfile] = []
+    should_migrate = False
     for item in payload:
         if not isinstance(item, dict):
             continue
         try:
-            providers.append(ApiProviderProfile.model_validate(item))
+            data = dict(item)
+            api_key = str(data.get("api_key", ""))
+            if api_key:
+                if is_protected_secret(api_key):
+                    data["api_key"] = unprotect_secret(api_key)
+                elif secret_protection_available():
+                    should_migrate = True
+            providers.append(ApiProviderProfile.model_validate(data))
         except ValueError:
             continue
+    if should_migrate:
+        _write_api_provider_registry(providers)
     return providers
 
 
@@ -764,12 +895,20 @@ def _write_api_provider_registry(providers: list[ApiProviderProfile]) -> None:
     temp_path = settings.api_providers_path.with_suffix(".json.tmp")
     with temp_path.open("w", encoding="utf-8") as handle:
         json.dump(
-            [provider.model_dump() for provider in providers],
+            [_api_provider_storage_payload(provider) for provider in providers],
             handle,
             ensure_ascii=False,
             indent=2,
         )
     temp_path.replace(settings.api_providers_path)
+
+
+def _api_provider_storage_payload(provider: ApiProviderProfile) -> dict[str, Any]:
+    payload = provider.model_dump()
+    api_key = str(payload.get("api_key", ""))
+    if api_key:
+        payload["api_key"] = protect_secret(api_key)
+    return payload
 
 
 def _character_payload_data(payload: dict[str, Any]) -> dict[str, Any]:
@@ -841,6 +980,29 @@ def _chat_title(messages: list[ChatSessionMessage]) -> str:
     if messages:
         return messages[0].content.replace("\n", " ")[:80]
     return "Untitled Chat"
+
+
+def _workspace_chat_title(messages: list[WorkspaceChatMessage]) -> str:
+    for message in messages:
+        if message.role == "user":
+            return message.content.replace("\n", " ")[:80]
+    if messages:
+        return messages[0].content.replace("\n", " ")[:80]
+    return "Workspace Chat"
+
+
+def _normalize_workspace_folder_path(path: str | None) -> str:
+    raw_path = (path or "").strip().replace("\\", "/")
+    while raw_path.startswith("./"):
+        raw_path = raw_path[2:]
+    if raw_path == "workspace":
+        return ""
+    if raw_path.startswith("workspace/"):
+        raw_path = raw_path[len("workspace/") :]
+    parts = [part for part in raw_path.split("/") if part and part != "."]
+    if any(part == ".." for part in parts):
+        raise ValueError("Workspace chat folder cannot escape ./workspace.")
+    return "/".join(parts)
 
 
 def _safe_id(value: str | None) -> str:

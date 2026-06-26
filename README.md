@@ -1,248 +1,210 @@
-<p align="center"><img src="sweetroll_lm/static/assets/icon.png" width="220" alt="SweetrollLM Logo"></p>
+<p align="center"><img src="sweetroll_lm/static/assets/icon.png" width="180" alt="SweetrollLM Logo"></p>
 
-<h1 align="center">🛖 SweetrollLM: The Guildmaster's Secret AI Proxy</h1>
+# SweetrollLM
 
-> "Let me guess... someone stole your sweetroll?"
+> A local-first AI tavern for character chat, GGUF inference, cloud providers, multimodal context, and a growing agentic workspace.
 
----
+SweetrollLM blends the character-card and lorebook comfort of SillyTavern with the model-management feel of LM Studio and the focused workspace ergonomics of modern agentic tools. It is built to run from your machine, store user data locally, and gracefully route between native GGUF inference, an embedded KoboldCPP old-PC worker, and OpenAI-compatible cloud APIs.
 
-## ⚔️ Welcome, fellow sweetroll enthusiast!
+## Screenshots & Media
 
-**SweetrollLM** is a local-first AI sandbox for rogue developers, gamers, character-card collectors, prompt alchemists, and anyone who believes their conversations belong in their own strongbox.
+### First-Run Setup Wizard
 
-This is the tavern where:
+![SweetrollLM first-run setup wizard](docs/screenshots/sweetroll-home.png)
 
-- Your **GGUF models** live on your own disk.
-- Your **characters, lorebooks, personas, and timelines** stay in local storage.
-- Your **API keys** sit in isolated vault slots instead of getting mashed into one cursed config blob.
-- Your **chat UI** can look like a moonlit inn, a haunted guild hall, or whatever wallpaper shrine your heart demands.
+### Future Gallery Slots
 
-No bland corporate glass cube.
-No "please subscribe to unlock personality."
-No cloud overlord deciding your tavern closes at midnight.
+Drop additional project media here as the UI evolves:
 
-Just you, your models, your characters, and a suspiciously cozy pile of sweetrolls.
+- `docs/screenshots/character-chat.png` - character chat with avatar backdrop and gallery.
+- `docs/screenshots/home-after-setup.png` - default chat screen after onboarding.
+- `docs/screenshots/workspace-agent.png` - Agentic Workspace running a file or terminal task.
+- `docs/screenshots/model-marketplace.png` - GGUF marketplace and local model manager.
+- `docs/media/demo-chat-flow.gif` - chat-native image attachment and auto-summary flow.
+- `docs/media/workspace-demo.mp4` - workspace automation or coding session walkthrough.
 
----
+## What Makes It Different
 
-## 🧙 Legendary Architecture Features
+### Adaptive Inference Routing
 
-### 🧪 The Archmage's Backdrop Canvas
+SweetrollLM attempts native `llama-cpp-python` loading first for modern machines. If the local wheel fails because of AVX/AVX2 or binary instruction mismatch, the backend catches the failure and can launch `koboldcpp-oldpc.exe` headlessly as a managed background worker.
 
-SweetrollLM has a **dual-layer wallpaper engine** built for dramatic roleplay ambience without murdering readability.
+The user sees a clean diagnostic instead of a crash.
 
-The canvas priority spell fires in this order:
+### Secure Multi-API Provider Slots
 
-1. **Character Card Backdrop** — if the active character has custom card art enabled.
-2. **Character Avatar Fallback** — if no separate backdrop exists, the character portrait becomes the scene.
-3. **Uploaded Global Background** — a universal tavern wallpaper stored under `storage/assets/`.
-4. **Theme Default Canvas** — the safe fallback when no art has been chosen.
+Cloud provider profiles are stored locally under `storage/`, with each profile isolated by its own ID, base URL, model, default flag, and fallback flag.
 
-Then come the twin sorcery sliders:
+The browser no longer receives raw API keys from the provider registry. Saved keys are masked in the UI and resolved server-side only when a selected provider profile is used.
 
-- **Image Dimmer** controls `--bg-image-opacity`, affecting only the background layer.
-- **Chat Bubble Translucency** controls `--chat-bubble-opacity`, affecting only message surfaces.
+### Chat-Native Image Attachments
 
-The result: crisp art behind the chat, readable text in front, and enough glassy drama to make your character card feel like it paid rent.
+Image attachment now behaves like a modern AI chat client:
 
-> Your wallpaper is not a muddy black smudge anymore. The canvas breathes. The bubbles obey.
+- Attach an image directly in the chat composer.
+- Add optional text such as "this is me" or "look at this screenshot."
+- Press Send once.
+- SweetrollLM uploads the image locally, captions it through the configured vision profile, injects the caption as hidden visual context for that turn, and keeps the visible chat immersive with the image inline.
 
----
+The same image attachment pattern is available in the Agentic Workspace composer for screenshot analysis and workspace debugging.
 
-### 🔥 The Left-Sidebar Forge
+### Per-Chat Summary Memory
 
-Opening a giant marketplace modal just to mount a local model is peasant behavior.
+Each character chat can carry its own continuity summary.
 
-The **Left-Sidebar Forge** gives Local Engine Mode its own context-aware GGUF control panel:
+- Write a long summary manually in Chat Settings.
+- Generate one from the last N messages.
+- Enable Auto Summary so the chat refreshes its memory after new assistant replies.
+- Keep lorebook/persona overrides isolated per timeline.
 
-- Scan `storage/models/` for local `.gguf` scrolls.
-- Pick a model from the inline dropdown.
-- Load or unload the engine without leaving the chat.
-- See the active model status immediately.
-- Catch nasty failures inline, including:
-  - out-of-memory crashes,
-  - bad context sizing,
-  - native `llama-cpp-python` loader failures,
-  - legacy CPU instruction mismatch,
-  - missing `koboldcpp-oldpc.exe` fallback worker.
+This keeps long-running roleplay and project chats coherent without forcing users to constantly reopen settings.
 
-Modern rigs can swing the native blade. Older machines can summon the headless old-PC Kobold worker from the shadows.
+### Character Chat Gallery
 
-No panic. No random crash ritual. Just a clean diagnostic and a path forward.
+Every character chat now has a lightweight gallery in Chat Settings. Images sent in that timeline are collected automatically from message history so users can revisit visual context without digging through the full conversation.
 
----
+### Dual-Layer Backdrop System
 
-### 🗝️ Multi-API Pocket Slots
+SweetrollLM supports a hierarchical background engine:
 
-Cloud keys deserve separate pockets. SweetrollLM treats provider configs like enchanted inventory slots, not one cursed junk drawer.
+1. Character card backdrop.
+2. Character avatar fallback.
+3. Uploaded global chat background.
+4. Theme default canvas.
 
-Each saved API profile owns its own isolated record:
+Message bubble transparency and background image opacity are controlled independently through CSS variables, so the art can stay visible without reducing text readability.
 
-- `id`
-- `name`
-- `base_url`
-- `api_key`
-- `default_model`
-- active default flag
-- alternate fallback flag
+### Agentic Workspace
 
-That means you can keep:
+The workspace lives as its own app section and operates inside `./workspace`.
 
-- OpenRouter for free tavern experiments,
-- OpenAI for polished spellcraft,
-- Ollama for local OpenAI-compatible routing,
-- Groq for fast side quests,
-- KoboldCPP for the old reliable basement engine,
-- custom endpoints for whatever forbidden artifact you are testing at 3 AM.
+It supports:
 
-Saving a new profile no longer overwrites your active default. The vault has slots now. Civilization has advanced.
+- Folder-aware workspace chat sessions.
+- Ask-first, read-only, and full-access control levels.
+- File and folder tools with sandbox path validation.
+- Terminal command execution.
+- Background service management.
+- Automation script execution.
+- Workspace image attachments for screenshot analysis.
+- Context flush and thread pruning.
 
----
+The goal is a practical local agent workspace that can inspect, create, run, and repair files while keeping SweetrollLM's roleplay chat surface intact.
 
-### The Compact Guild Ledger
+## Installation
 
-The interface has been reforged into a slimmer, sharper command deck so the tavern no longer eats your whole screen like an overfed draugr.
-
-The left sidebar now uses collapsible accordion panels for:
-
-- **Inference / Local Engine** - switch routing modes, scan GGUF files, and load or unload local models without opening the marketplace.
-- **Cloud API** - manage provider profiles and fallback keys in a tighter editor layout.
-- **Generation Settings** - tune theme, background, streaming, tokens, temperature, and transparency without permanent vertical clutter.
-- **Characters / Chats** - keep personas, character cards, past timelines, system prompt, and lorebook status in one compact campaign shelf.
-
-The whole workspace is scaled down for actual use: tighter buttons, cleaner top bars, single-line headers, smaller form rhythm, and less wasted vertical air. More tavern table. Less ceremonial paperwork.
-
----
-
-### The Latest-Reply Command Sigils
-
-The newest assistant message bubble now carries a power-user execution toolbar, visible only when it matters: on the most recent active character reply.
-
-Its four sigils are built for branching, polishing, and roleplay momentum:
-
-- **Retry with Variant Preservation** - rerolls the assistant response while keeping the old attempt in that message slot's variant archive.
-- **Variant History Paging (`< x / y >`)** - cycles between saved generation paths and mutates the active chat state so future context follows the selected branch.
-- **Continue Generation** - asks the active local or cloud engine to keep writing from the end of the last assistant reply without needing another user prompt.
-- **Contextual Input Suggestions** - asks the model to draft a likely next user response, then places it directly into the composer for editing instead of auto-sending it.
-
-The toolbar is event-delegated through the persistent chat log, so re-rendering the message list does not kill the buttons. A proper adventurer keeps their blades sharp after every redraw.
-
----
-
-## 📜 Other Tavern Tools
-
-SweetrollLM also brings the goods:
-
-- **Streaming chat via Server-Sent Events** with optional full-response rendering.
-- **SillyTavern-style character cards** with import/export support.
-- **Lorebooks / World Info** that inject context when keywords awaken.
-- **User personas** so the AI knows who walked into the tavern.
-- **Persistent chat timelines** with branching session history.
-- **Message controls** for edit, copy, fold, hide, select, and bulk delete.
-- **Latest-reply execution toolbar** for retry variants, continuation, branch paging, and suggested user replies.
-- **Hugging Face GGUF marketplace** with search, local detection, and background downloads.
-- **Dynamic fallback inference** from native `llama-cpp-python` to embedded `koboldcpp-oldpc.exe`.
-- **Collapsible compact sidebar** with accordion sections for local inference, cloud profiles, generation settings, characters, and chats.
-- **Live console log viewer** for watching the engine chant in real time.
-
----
-
-## 🕯️ Installation & Rituals
-
-### 1. Clone the Guild Hall
+### 1. Clone
 
 ```bash
 git clone https://github.com/syfr512/SweetrollLM.git
 cd SweetrollLM
 ```
 
-### 2. Cast the Installation Ritual
+### 2. Install
 
-Double-click the installer once:
+Run once:
 
 ```text
 install.bat
 ```
 
-That single ritual creates the local `venv/`, activates it, and pulls down the required dependencies.
+This creates `venv/` and installs the Python dependencies.
 
-### 3. Stock the Model Cellar
+### 3. Launch
 
-Drop your `.gguf` models into:
-
-```text
-storage/models/
-```
-
-If your CPU is an older warrior without modern AVX2 battle runes, place this binary in the project root:
-
-```text
-koboldcpp-oldpc.exe
-```
-
-SweetrollLM will try native inference first, then fall back to the headless old-PC worker if the hardware cries for mercy.
-
-### 4. Forge a Desktop Shortcut
-
-Want a proper tavern sigil on your Desktop? Double-click this once:
-
-```text
-create_shortcut.bat
-```
-
-It creates a native Windows shortcut named `SweetrollLM.lnk` pointing straight at the local launcher.
-
-Under the hood, the shortcut forge uses a PowerShell-backed Windows COM call, so paths with spaces behave properly. It also binds the custom tavern sigil at:
-
-```text
-sweetroll_lm/static/assets/icon.ico
-```
-
-### 5. Open the Tavern
-
-Double-click:
+Run:
 
 ```text
 start.bat
 ```
 
-The tavern opens at:
+SweetrollLM opens at:
 
 ```text
 http://127.0.0.1:7865
 ```
 
-`start.bat` starts the server and opens SweetrollLM in app-mode, so you get a clean desktop-window feel without browser clutter.
+### 4. Optional Desktop Shortcut
 
----
+Run:
 
-## 🧭 Suggested First Quest
+```text
+create_shortcut.bat
+```
 
-1. Put a small GGUF model in `storage/models/`.
-2. Launch SweetrollLM.
-3. Open **Local Engine Mode**.
-4. Use the **Left-Sidebar Forge** to scan and load it.
-5. Import a character card.
-6. Add a global wallpaper.
-7. Slide the translucency until the tavern looks illegal.
-8. Begin the campaign.
+This creates a Windows Desktop shortcut mapped to `start.bat` and uses the bundled `sweetroll_lm/static/assets/icon.ico` icon.
 
----
+## Local Models
 
-## 🛡️ License
+Place `.gguf` files in:
 
-SweetrollLM is released under the **GNU Affero General Public License v3.0**.
+```text
+storage/models/
+```
 
-Translation from legalese: build with it, modify it, share it, fork it, improve it, but do not sneak into the night wearing our cloak and sell a closed-source rebrand to unsuspecting villagers.
+For legacy CPUs without modern vector extensions, place:
 
----
+```text
+koboldcpp-oldpc.exe
+```
 
-## 🍺 Final Toast
+in the project root. SweetrollLM will use it only when native loading fails or when the managed fallback route is needed.
 
-SweetrollLM is for people who want their AI frontends weird, powerful, local, moddable, dramatic, and entirely under their command.
+## Local Data Layout
 
-The fire is lit.
-The model cellar is open.
-The guild table has room.
+Runtime data is intentionally local and ignored by Git:
 
-**Now roll initiative, traveler.**
+- `storage/api_providers.json`
+- `storage/app_settings.json`
+- `storage/characters/`
+- `storage/chats/`
+- `storage/lorebooks/`
+- `storage/personas/`
+- `storage/assets/`
+- `storage/models/`
+- `storage/workspace_chats/`
+- `workspace/`
+
+The repository ships only placeholder `.gitkeep` files for these folders. User cards, API keys, chats, assets, logs, models, and workspace files should not be committed.
+
+## Feature Overview
+
+- Streaming chat through Server-Sent Events.
+- Optional non-streamed full response mode.
+- Character cards with import/export support.
+- Personas with default persona selection.
+- Lorebooks with active/inactive controls.
+- Per-chat persona/lorebook overrides.
+- Per-chat manual summary and Auto Summary.
+- Character chat gallery.
+- Direct chat image attachments with vision captioning.
+- Workspace image attachments for screenshots.
+- OpenAI-compatible provider registry.
+- Provider-specific image generation and vision caption configuration.
+- Local GGUF model scanner and inline loader.
+- Hugging Face GGUF marketplace and background downloader.
+- Native-to-KoboldCPP fallback routing.
+- Live console log viewer.
+- App-mode Windows launcher.
+
+## Development Checks
+
+Before committing:
+
+```bash
+node --check sweetroll_lm/static/js/app.js
+python -m compileall sweetroll_lm test_architecture.py
+python test_architecture.py
+```
+
+Expected architecture result:
+
+```text
+Overall: PASS
+```
+
+## License
+
+SweetrollLM is released under the GNU Affero General Public License v3.0.
+
+Build with it, fork it, modify it, share it, and keep derivative networked versions open for the community.

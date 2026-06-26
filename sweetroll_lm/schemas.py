@@ -109,6 +109,9 @@ class ChatRequest(BaseModel):
     persona_id: str | None = None
     lorebook_id: str | None = None
     lorebook_enabled: bool = False
+    chat_summary: str = ""
+    auto_summary_enabled: bool = False
+    summary_message_count: int = 10
     vision_context: str = ""
     local: LocalSettings = Field(default_factory=LocalSettings)
     cloud: CloudSettings | None = None
@@ -132,8 +135,159 @@ class ChatCompletionResponse(BaseModel):
     text: str
 
 
+class ChatSummaryRequest(BaseModel):
+    source: InferenceSource
+    messages: list[ChatMessage]
+    count: int = Field(default=10, ge=1, le=100)
+    api_provider_id: str | None = None
+    local: LocalSettings = Field(default_factory=LocalSettings)
+    cloud: CloudSettings | None = None
+    max_tokens: int = Field(default=512, ge=64, le=2048)
+
+
+class ChatSummaryResponse(BaseModel):
+    summary: str
+    message_count: int
+
+
+class WorkspaceNode(BaseModel):
+    name: str
+    path: str
+    kind: Literal["file", "folder"]
+    size_bytes: int = 0
+    modified_at: str = ""
+    children: list["WorkspaceNode"] = Field(default_factory=list)
+
+
+class WorkspaceTreeResponse(BaseModel):
+    root: str = "."
+    nodes: list[WorkspaceNode] = Field(default_factory=list)
+
+
+class WorkspacePathRequest(BaseModel):
+    path: str = ""
+
+
+class WorkspaceFolderRequest(BaseModel):
+    path: str = Field(min_length=1, max_length=240)
+
+
+class WorkspaceDeleteRequest(BaseModel):
+    path: str = Field(min_length=1, max_length=240)
+
+
+class WorkspaceMetadataRequest(BaseModel):
+    path: str = ""
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    permissions: dict[str, Any] = Field(default_factory=dict)
+
+
+class WorkspaceMetadataResponse(BaseModel):
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class WorkspaceToolCall(BaseModel):
+    action: Literal[
+        "list",
+        "read",
+        "write",
+        "mkdir",
+        "delete",
+        "run",
+        "run_terminal_command",
+        "start_background_service",
+        "send_automation_email",
+        "run_automation_script",
+        "execute_automation_task",
+    ]
+    path: str = ""
+    content: str = ""
+    command: str = ""
+    target_dir: str = ""
+    service_name: str = ""
+    engine: str = ""
+    mode: str = ""
+    script_content: str = ""
+    to: str = ""
+    subject: str = ""
+    body: str = ""
+    reason: str = ""
+
+
+class WorkspaceChatMessage(BaseModel):
+    role: Literal["user", "assistant", "system", "tool"]
+    content: str = Field(min_length=1)
+    timestamp: str = Field(default_factory=utc_now_iso)
+
+
+class WorkspaceChatSession(BaseModel):
+    id: str
+    folder_path: str = ""
+    character_id: str | None = None
+    title: str = "Workspace Chat"
+    messages: list[WorkspaceChatMessage] = Field(default_factory=list)
+    created_at: str
+    updated_at: str
+
+
+class WorkspaceChatSaveRequest(BaseModel):
+    id: str | None = None
+    folder_path: str = ""
+    character_id: str | None = None
+    title: str | None = None
+    messages: list[WorkspaceChatMessage] = Field(default_factory=list)
+
+
+class WorkspaceChatClearRequest(BaseModel):
+    id: str = Field(min_length=1)
+
+
+class WorkspaceChatPruneRequest(BaseModel):
+    id: str = Field(min_length=1)
+
+
+class WorkspaceAgentRequest(BaseModel):
+    prompt: str = Field(min_length=1, max_length=8000)
+    session_id: str = "default"
+    control_level: Literal["read_only", "ask_first", "full_access"] = "full_access"
+    character_id: str | None = None
+    current_directory: str = ""
+    vision_context: str = ""
+    messages: list[WorkspaceChatMessage] = Field(default_factory=list)
+    approved: bool = False
+    pending_task: WorkspaceToolCall | None = None
+    pending_tasks: list[WorkspaceToolCall] = Field(default_factory=list)
+    source: InferenceSource = InferenceSource.cloud
+    api_provider_id: str | None = None
+    local: LocalSettings = Field(default_factory=LocalSettings)
+    cloud: CloudSettings | None = None
+
+
+class WorkspaceAgentResponse(BaseModel):
+    status: Literal["completed", "needs_approval", "denied", "error", "interrupted"]
+    message: str
+    assistant_text: str = ""
+    output: str = ""
+    elapsed_seconds: float = 0.0
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+    pending_task: WorkspaceToolCall | None = None
+    pending_tasks: list[WorkspaceToolCall] = Field(default_factory=list)
+    context_messages: list[WorkspaceChatMessage] = Field(default_factory=list)
+
+
 class ImageGenerationRequest(BaseModel):
-    provider: Literal["comfyui", "stable_diffusion", "flux", "dalle3", "custom"] = "comfyui"
+    provider: Literal[
+        "openai",
+        "openrouter",
+        "comfyui",
+        "stable_diffusion",
+        "flux",
+        "dalle3",
+        "custom",
+    ] = "openai"
+    api_provider_id: str | None = None
     endpoint: str = ""
     api_key: SecretStr | None = None
     model: str = ""
@@ -158,6 +312,24 @@ class ApiProviderTestResponse(BaseModel):
     endpoint: str = ""
 
 
+class WorkspaceEmailSettings(BaseModel):
+    provider: str = "custom"
+    smtp_server: str = ""
+    smtp_port: int = Field(default=587, ge=1, le=65535)
+    smtp_email: str = ""
+    smtp_password: str = ""
+    has_password: bool = False
+
+
+class WorkspaceEmailSettingsResponse(BaseModel):
+    provider: str = "custom"
+    smtp_server: str = ""
+    smtp_port: int = 587
+    smtp_email: str = ""
+    has_password: bool = False
+    presets: dict[str, dict[str, str | int]] = Field(default_factory=dict)
+
+
 class VisionCaptionRequest(BaseModel):
     provider: Literal[
         "llava",
@@ -168,6 +340,7 @@ class VisionCaptionRequest(BaseModel):
         "ollama",
         "custom",
     ] = "custom"
+    api_provider_id: str | None = None
     endpoint: str = ""
     api_key: SecretStr | None = None
     model: str = ""
@@ -378,6 +551,12 @@ class ChatSessionMessage(BaseModel):
 class ChatSession(BaseModel):
     id: str
     character_id: str | None = None
+    persona_id: str | None = None
+    lorebook_id: str | None = None
+    lorebook_enabled: bool | None = None
+    chat_summary: str = ""
+    auto_summary_enabled: bool = False
+    summary_message_count: int = 10
     title: str = "Untitled Chat"
     messages: list[ChatSessionMessage] = Field(default_factory=list)
     created_at: str
@@ -387,6 +566,12 @@ class ChatSession(BaseModel):
 class ChatSessionSaveRequest(BaseModel):
     id: str | None = None
     character_id: str | None = None
+    persona_id: str | None = None
+    lorebook_id: str | None = None
+    lorebook_enabled: bool | None = None
+    chat_summary: str = ""
+    auto_summary_enabled: bool = False
+    summary_message_count: int = 10
     title: str | None = None
     messages: list[ChatSessionMessage] = Field(default_factory=list)
 

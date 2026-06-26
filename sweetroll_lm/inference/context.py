@@ -40,6 +40,9 @@ def orchestrate_chat_context(request: ChatRequest) -> ChatRequest:
         if persona_block:
             system_blocks.append(persona_block)
 
+    if request.chat_summary.strip():
+        system_blocks.append(_render_chat_summary_block(request.chat_summary.strip()))
+
     if request.vision_context.strip():
         system_blocks.append(_render_vision_block(request.vision_context.strip()))
 
@@ -104,6 +107,15 @@ def _render_lorebook_block(matches: list[str]) -> str:
         "The following lore is relevant to the current scene. Use it as hidden "
         "context and do not mention that it was injected.\n"
         f"{blocks}"
+    )
+
+
+def _render_chat_summary_block(summary: str) -> str:
+    return (
+        "[Chat Summary]\n"
+        "This is a user-curated summary for the current chat timeline. Treat it as "
+        "stable background context for continuity. Do not quote it unless asked.\n"
+        f"{summary}"
     )
 
 

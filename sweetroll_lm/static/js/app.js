@@ -26,41 +26,122 @@ const CUSTOM_MODEL_VALUE = "__custom__";
 
 const CLOUD_MODEL_CATALOG = {
   openrouter: [
+    "openai/gpt-4o",
     "deepseek/deepseek-chat",
     "deepseek/deepseek-r1",
+    "anthropic/claude-3.5-sonnet",
+    "anthropic/claude-3.5-haiku",
+    "anthropic/claude-3-opus",
+    "google/gemini-2.5-pro",
+    "google/gemini-2.5-flash",
+    "google/gemini-2.0-flash-001",
+    "google/gemini-flash-1.5",
+    "google/gemini-pro-1.5",
+    "x-ai/grok-3",
+    "x-ai/grok-3-mini",
+    "meta-llama/llama-3.3-70b-instruct",
     "meta-llama/llama-3-70b-instruct",
+    "meta-llama/llama-3-8b-instruct",
     "meta-llama/llama-3.1-8b-instruct",
     "meta-llama/llama-3.1-70b-instruct",
+    "meta-llama/llama-3.1-405b-instruct",
     "meta-llama/llama-3.2-3b-instruct:free",
+    "meta-llama/llama-3.2-11b-vision-instruct",
+    "meta-llama/llama-3.2-90b-vision-instruct",
+    "qwen/qwen-2.5-vl-72b-instruct",
+    "qwen/qwen-2.5-vl-32b-instruct",
+    "qwen/qwen-2.5-vl-7b-instruct",
+    "google/gemma-3-27b-it",
+    "google/gemma-3-12b-it",
+    "google/gemma-3-4b-it",
+    "qwen/qwen3-235b-a22b",
+    "qwen/qwen3-32b",
+    "qwen/qwen3-14b",
     "qwen/qwen-2.5-7b-instruct",
+    "qwen/qwen-2.5-14b-instruct",
     "qwen/qwen-2.5-32b-instruct",
     "qwen/qwen-2.5-72b-instruct",
-    "qwen/qwen3-235b-a22b",
+    "qwen/qwen-2.5-coder-32b-instruct",
+    "mistralai/mistral-large",
+    "mistralai/mistral-medium",
+    "mistralai/mistral-small-3.1-24b-instruct",
     "mistralai/mistral-7b-instruct",
     "mistralai/mistral-nemo",
+    "mistralai/pixtral-12b",
+    "mistralai/pixtral-large",
+    "moonshotai/kimi-k2",
+    "perplexity/sonar",
+    "perplexity/sonar-pro",
+    "nousresearch/hermes-3-llama-3.1-405b",
+    "nousresearch/hermes-3-llama-3.1-70b",
     "gryphe/mythomax-l2-13b",
+    "cohere/command-r-plus",
+    "cohere/command-r",
     "openai/gpt-4o-mini",
     "openai/gpt-4.1-mini",
+    "openai/o4-mini",
+    "openai/o3-mini",
+    "openai/gpt-image-1",
+    "black-forest-labs/flux-1.1-pro",
+    "black-forest-labs/flux-dev",
+    "stability-ai/sdxl",
   ],
-  openai: ["gpt-4o-mini", "gpt-4.1-mini", "gpt-4o", "o4-mini", "gpt-4.1"],
-  custom: ["koboldcpp", "llama3", "mistral", "qwen2.5"],
+  openai: [
+    "gpt-4o-mini",
+    "gpt-4o",
+    "gpt-4.1-mini",
+    "gpt-4.1",
+    "gpt-4.1-nano",
+    "gpt-4.5-preview",
+    "o4-mini",
+    "o3-mini",
+    "o3",
+    "gpt-4-turbo",
+    "gpt-image-1",
+    "dall-e-3",
+    "dall-e-2",
+  ],
+  custom: [
+    "koboldcpp",
+    "llama3",
+    "llama3.1",
+    "llama3.2",
+    "mistral",
+    "mistral-nemo",
+    "qwen2.5",
+    "qwen3",
+    "deepseek-r1",
+    "gemma3",
+    "phi4",
+  ],
 };
 
 const VISION_MODEL_CATALOG = {
   openrouter: [
-    "qwen/qwen-2.5-vl-72b-instruct",
-    "qwen/qwen-2.5-72b-instruct",
-    "qwen/qwen-2.5-vl-7b-instruct",
+    "openai/gpt-4o",
     "openai/gpt-4o-mini",
+    "openai/gpt-4.1",
+    "openai/gpt-4.1-mini",
+    "google/gemini-2.5-pro",
+    "google/gemini-2.5-flash",
     "google/gemini-2.0-flash-001",
     "anthropic/claude-3.5-sonnet",
+    "anthropic/claude-3.5-haiku",
+    "qwen/qwen-2.5-vl-72b-instruct",
+    "qwen/qwen-2.5-vl-32b-instruct",
+    "qwen/qwen-2.5-vl-7b-instruct",
+    "meta-llama/llama-3.2-90b-vision-instruct",
+    "meta-llama/llama-3.2-11b-vision-instruct",
+    "mistralai/pixtral-12b",
+    "google/gemma-3-27b-it",
+    "google/gemma-3-12b-it",
   ],
-  openai: ["gpt-4o-mini", "gpt-4o", "gpt-4.1-mini"],
-  google: ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"],
-  ollama: ["llava", "llava:13b", "qwen2.5vl:7b"],
-  llava: ["llava", "llava-v1.6", "bakllava"],
-  "qwen-vl": ["qwen2.5-vl-7b-instruct", "qwen2.5-vl-72b-instruct"],
-  custom: ["vision-model"],
+  openai: ["gpt-4o-mini", "gpt-4o", "gpt-4.1-mini", "gpt-4.1", "o4-mini"],
+  google: ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"],
+  ollama: ["llava", "llava:13b", "llava:34b", "bakllava", "moondream", "qwen2.5vl:7b", "qwen2.5vl:32b"],
+  llava: ["llava", "llava-v1.6", "llava-next", "llava:13b", "llava:34b", "bakllava"],
+  "qwen-vl": ["qwen2.5-vl-7b-instruct", "qwen2.5-vl-32b-instruct", "qwen2.5-vl-72b-instruct", "qwen-vl-plus", "qwen-vl-max"],
+  custom: ["gpt-4o", "gemini-2.5-flash", "qwen2.5-vl-7b-instruct", "llava", "vision-model"],
 };
 
 const state = {
@@ -75,6 +156,14 @@ const state = {
   downloadSource: null,
   activeChatId: null,
   chatSessions: [],
+  chatSettings: {
+    persona_id: null,
+    lorebook_id: null,
+    lorebook_enabled: null,
+    chat_summary: "",
+    auto_summary_enabled: false,
+    summary_message_count: 10,
+  },
   autoScrollObserver: null,
   characters: [],
   activeCharacter: null,
@@ -107,6 +196,8 @@ const state = {
   extensionsOpen: false,
   visionContext: "",
   visionAttachment: null,
+  chatPendingImage: null,
+  workspacePendingImage: null,
   imageGenerating: false,
   logRefreshTimer: null,
   startupReady: false,
@@ -116,6 +207,18 @@ const state = {
   setupSelectedModelPath: "",
   validatedApiProviderKey: "",
   pendingNewChat: false,
+  workspaceTree: [],
+  workspaceSelectedPath: "",
+  workspaceSelectedKind: "",
+  workspaceChats: [],
+  workspaceChatId: null,
+  workspaceMessages: [],
+  workspacePendingTask: null,
+  workspacePendingContext: [],
+  workspaceRunning: false,
+  workspaceDrag: null,
+  workspaceOffset: { x: 0, y: 0 },
+  workspaceEmailPresets: {},
 };
 
 const el = {};
@@ -132,6 +235,7 @@ async function initializeApp() {
   setChatTransparency(el.chatTransparency.value, { persist: false });
   setBackgroundImageOpacity(el.backgroundOpacitySlider.value, { persist: false });
   setSidebarCollapsed(loadSidebarPreference(), { persist: false });
+  setSidebarMode("chat");
   renderCloudModelControl();
   renderVisionModelControl();
   loadExtensionConfig();
@@ -224,13 +328,68 @@ function cacheElements() {
     "activeLorebookStatus",
     "chatTitle",
     "chatSubtitle",
+    "quickInferenceSource",
+    "quickApiProvider",
+    "quickModelLabel",
     "chatMain",
     "chatBackdrop",
     "chatHistorySelect",
+    "openChatSettings",
+    "closeChatSettings",
+    "chatPersonaSelect",
+    "chatLorebookSelect",
+    "chatLorebookEnabled",
+    "chatSummaryText",
+    "chatAutoSummaryEnabled",
+    "chatSummaryCount",
+    "autoSummarizeChat",
+    "chatGalleryGrid",
+    "chatGalleryCount",
+    "saveChatSettings",
+    "clearChatSettings",
+    "chatSettingsStatus",
     "exportChat",
     "deleteChat",
     "clearChat",
     "newChat",
+    "openWorkspace",
+    "workspaceWindow",
+    "workspaceDragHandle",
+    "toggleWorkspaceFiles",
+    "toggleWorkspaceConfig",
+    "workspaceRefresh",
+    "closeWorkspace",
+    "workspaceNewFolder",
+    "workspaceDeletePath",
+    "workspaceEditMetadata",
+    "workspaceTree",
+    "workspacePathStatus",
+    "workspaceNewChat",
+    "workspaceClearChat",
+    "workspaceContextFlush",
+    "workspaceChatList",
+    "workspaceChatLog",
+    "workspaceExecutionLog",
+    "workspaceForm",
+    "workspacePrompt",
+    "workspaceAttachImage",
+    "workspaceImageInput",
+    "workspaceAttachmentPreview",
+    "workspaceSend",
+    "workspaceStop",
+    "workspaceAgentCharacter",
+    "workspaceAgentCharacterField",
+    "workspaceAgentBase",
+    "workspaceControlLevel",
+    "workspaceModeBadge",
+    "workspaceEmailProvider",
+    "workspaceSmtpServer",
+    "workspaceSmtpPort",
+    "workspaceSmtpEmail",
+    "workspaceSmtpPassword",
+    "workspaceSaveEmailSettings",
+    "workspaceTestEmailSettings",
+    "workspaceEmailStatus",
     "openConsoleLogs",
     "closeConsoleLogs",
     "refreshConsoleLogs",
@@ -269,6 +428,7 @@ function cacheElements() {
     "extensionsDrawer",
     "extensionStatus",
     "imageProvider",
+    "imageApiProvider",
     "imageEndpoint",
     "imageModel",
     "imageAspectRatio",
@@ -280,13 +440,16 @@ function cacheElements() {
     "imageGenerationStatus",
     "visionEndpoint",
     "visionProvider",
+    "visionApiProvider",
     "visionModelSelect",
     "visionModel",
+    "visionPrompt",
     "saveVisionConfig",
-    "visionAttachmentPreview",
     "visionCaptionStatus",
     "attachImage",
+    "quickGenerateImage",
     "chatImageInput",
+    "chatAttachmentPreview",
     "chatMessages",
     "chatForm",
     "messageInput",
@@ -360,7 +523,9 @@ function cacheElements() {
     el[id] = document.getElementById(id);
   });
   el.modelMarketModal = document.getElementById("model-market-modal");
+  el.workspaceModal = document.getElementById("workspace-modal");
   el.consoleLogsModal = document.getElementById("console-logs-modal");
+  el.chatSettingsModal = document.getElementById("chat-settings-modal");
   el.setupWizardModal = document.getElementById("setup-wizard-modal");
   el.modelDiagnosticModal = document.getElementById("model-diagnostic-modal");
   el.characterModal = document.getElementById("character-modal");
@@ -374,7 +539,26 @@ function cacheElements() {
 
 function bindEvents() {
   bindSidebarAccordions();
+  bindSideMenu();
   el.inferenceSource.addEventListener("change", updateInferenceVisibility);
+  el.quickInferenceSource.addEventListener("change", () => {
+    el.inferenceSource.value = el.quickInferenceSource.value;
+    updateInferenceVisibility();
+  });
+  el.quickApiProvider.addEventListener("change", () => {
+    state.activeApiProviderId = el.quickApiProvider.value || null;
+    state.editingApiProviderId = state.activeApiProviderId;
+    if (state.activeApiProviderId) {
+      const provider = state.apiProviders.find((item) => item.id === state.activeApiProviderId);
+      if (provider) {
+        setApiProviderEditor(provider);
+        applyApiProviderToFields(provider);
+      }
+    }
+    renderApiProviderSelect();
+    renderApiProviderList();
+    syncQuickModelControls();
+  });
   el.cloudProvider.addEventListener("change", updateCloudDefaults);
   el.cloudModelSelect.addEventListener("change", () => {
     handleModelSelectChange(el.cloudModelSelect, el.cloudModel);
@@ -410,6 +594,39 @@ function bindEvents() {
 
   el.openModelMarket.addEventListener("click", openModelMarket);
   el.closeModelMarket.addEventListener("click", () => closeModal(el.modelMarketModal));
+  el.openWorkspace.addEventListener("click", openWorkspace);
+  el.closeWorkspace.addEventListener("click", closeWorkspaceInline);
+  el.toggleWorkspaceFiles.addEventListener("click", () => toggleWorkspacePanel("files"));
+  el.toggleWorkspaceConfig.addEventListener("click", () => toggleWorkspacePanel("config"));
+  el.workspaceRefresh.addEventListener("click", loadWorkspaceTree);
+  el.workspaceNewFolder.addEventListener("click", createWorkspaceFolder);
+  el.workspaceDeletePath.addEventListener("click", deleteWorkspacePath);
+  el.workspaceEditMetadata.addEventListener("click", editWorkspaceMetadata);
+  el.workspaceForm.addEventListener("submit", sendWorkspacePrompt);
+  el.workspacePrompt.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      el.workspaceForm.requestSubmit();
+    }
+  });
+  el.workspaceAttachImage.addEventListener("click", () => el.workspaceImageInput.click());
+  el.workspaceImageInput.addEventListener("change", (event) => {
+    stageImageAttachment(event.target.files?.[0], "workspace");
+    event.target.value = "";
+  });
+  el.workspaceStop.addEventListener("click", interruptWorkspaceGeneration);
+  el.workspaceControlLevel.addEventListener("change", updateWorkspaceModeBadge);
+  el.workspaceAgentCharacter.addEventListener("change", saveWorkspaceChatSession);
+  el.workspaceTree.addEventListener("click", handleWorkspaceTreeClick);
+  el.workspaceNewChat.addEventListener("click", createWorkspaceChatForSelection);
+  el.workspaceClearChat.addEventListener("click", clearWorkspaceChat);
+  el.workspaceContextFlush.addEventListener("click", pruneWorkspaceChatContext);
+  el.workspaceChatList.addEventListener("click", handleWorkspaceChatListClick);
+  el.workspaceChatLog.addEventListener("click", handleWorkspaceApprovalClick);
+  el.workspaceEmailProvider.addEventListener("change", applyWorkspaceEmailPreset);
+  el.workspaceSaveEmailSettings.addEventListener("click", saveWorkspaceEmailSettings);
+  el.workspaceTestEmailSettings.addEventListener("click", testWorkspaceEmailSettings);
+  bindWorkspaceDrag();
   el.openConsoleLogs.addEventListener("click", openConsoleLogs);
   el.closeConsoleLogs.addEventListener("click", () => closeModal(el.consoleLogsModal));
   el.refreshConsoleLogs.addEventListener("click", fetchConsoleLogs);
@@ -448,8 +665,22 @@ function bindEvents() {
   el.closePersonaRegistry.addEventListener("click", () => closeModal(el.personaModal));
   el.openLorebookEditor.addEventListener("click", openLorebookEditor);
   el.closeLorebookEditor.addEventListener("click", () => closeModal(el.lorebookModal));
+  el.openChatSettings.addEventListener("click", openChatSettings);
+  el.closeChatSettings.addEventListener("click", () => closeModal(el.chatSettingsModal));
+  el.saveChatSettings.addEventListener("click", saveChatSettings);
+  el.clearChatSettings.addEventListener("click", clearChatSettings);
+  el.autoSummarizeChat.addEventListener("click", autoSummarizeChat);
 
-  [el.modelMarketModal, el.consoleLogsModal, el.modelDiagnosticModal, el.characterModal, el.personaModal, el.lorebookModal, el.newChatModal].forEach((modal) => {
+  [
+    el.modelMarketModal,
+    el.consoleLogsModal,
+    el.modelDiagnosticModal,
+    el.characterModal,
+    el.personaModal,
+    el.lorebookModal,
+    el.newChatModal,
+    el.chatSettingsModal,
+  ].forEach((modal) => {
     modal.addEventListener("click", (event) => {
       if (event.target === modal) {
         closeModal(modal);
@@ -559,16 +790,19 @@ function bindEvents() {
     el.chatHistorySelect.addEventListener("change", loadSelectedChat);
   }
   el.toggleExtensions.addEventListener("click", toggleExtensionsDrawer);
+  el.imageApiProvider.addEventListener("change", () => applyExtensionApiProfileDefaults("image"));
   el.saveImageConfig.addEventListener("click", saveImageExtensionConfig);
   el.generateImage.addEventListener("click", generateImageFromExtension);
   el.saveVisionConfig.addEventListener("click", saveVisionExtensionConfig);
+  el.visionApiProvider.addEventListener("change", () => applyExtensionApiProfileDefaults("vision"));
   el.visionProvider.addEventListener("change", renderVisionModelControl);
   el.visionModelSelect.addEventListener("change", () =>
     handleModelSelectChange(el.visionModelSelect, el.visionModel)
   );
   el.attachImage.addEventListener("click", () => el.chatImageInput.click());
+  el.quickGenerateImage.addEventListener("click", quickGenerateImageFromComposer);
   el.chatImageInput.addEventListener("change", (event) => {
-    handleImageAttachment(event.target.files?.[0]);
+    stageImageAttachment(event.target.files?.[0], "chat");
     event.target.value = "";
   });
   [el.chatForm].forEach((dropTarget) => {
@@ -582,7 +816,7 @@ function bindEvents() {
     dropTarget.addEventListener("drop", (event) => {
       event.preventDefault();
       dropTarget.classList.remove("drag-over");
-      handleImageAttachment(event.dataTransfer?.files?.[0]);
+      stageImageAttachment(event.dataTransfer?.files?.[0], "chat");
     });
   });
   el.chatForm.addEventListener("submit", sendMessage);
@@ -594,6 +828,102 @@ function bindEvents() {
       event.preventDefault();
       el.chatForm.requestSubmit();
     }
+  });
+}
+
+function bindSideMenu() {
+  document.querySelectorAll("[data-side-action]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      const action = event.currentTarget.dataset.sideAction || "";
+      setActiveSideMenu(action);
+      if (event.currentTarget.id && [
+        "openWorkspace",
+        "openCharacterLibrary",
+        "openPersonaRegistry",
+        "openLorebookEditor",
+        "openModelMarket",
+      ].includes(event.currentTarget.id)) {
+        return;
+      }
+      handleSideMenuAction(action);
+    });
+  });
+}
+
+function setActiveSideMenu(action) {
+  if (!action) {
+    return;
+  }
+  document.querySelectorAll(".side-menu-item").forEach((item) => {
+    item.classList.toggle("active", item.dataset.sideAction === action);
+  });
+}
+
+function handleSideMenuAction(action) {
+  if (action === "home") {
+    setSidebarMode("chat");
+    closeWorkspaceInline();
+    el.chatMain?.scrollIntoView?.({ block: "nearest" });
+    return;
+  }
+  if (action === "workspace") {
+    openWorkspace();
+    return;
+  }
+  if (action === "settings") {
+    if (el.settingsSidebar?.dataset.mode === "settings") {
+      setSidebarMode("chat");
+      setActiveSideMenu("home");
+      return;
+    }
+    openSettingsSection();
+    return;
+  }
+  if (action === "characters") {
+    setSidebarMode("chat");
+    openCharacterLibrary();
+    return;
+  }
+  if (action === "personas") {
+    setSidebarMode("chat");
+    openPersonaRegistry();
+    return;
+  }
+  if (action === "lorebooks") {
+    setSidebarMode("chat");
+    openLorebookEditor();
+    return;
+  }
+  if (action === "models") {
+    setSidebarMode("settings");
+    openModelMarket();
+  }
+}
+
+function openSettingsSection() {
+  closeWorkspaceInline();
+  setSidebarMode("settings");
+  setActiveSideMenu("settings");
+  ["inference", "generation", "cloud"].forEach((key) => {
+    const section = document.querySelector(`[data-accordion-key="${key}"]`);
+    if (section) {
+      setAccordionCollapsed(section, false);
+    }
+  });
+  const target = document.querySelector('[data-accordion-key="inference"]');
+  target?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+}
+
+function setSidebarMode(mode = "chat") {
+  if (!el.settingsSidebar) {
+    return;
+  }
+  el.settingsSidebar.dataset.mode = mode;
+  document.querySelectorAll("[data-settings-panel]").forEach((panel) => {
+    panel.classList.toggle("sidebar-panel-hidden", mode !== "settings");
+  });
+  document.querySelectorAll("[data-chat-panel]").forEach((panel) => {
+    panel.classList.toggle("sidebar-panel-hidden", mode !== "chat");
   });
 }
 
@@ -627,7 +957,7 @@ function setAccordionCollapsed(section, collapsed, options = {}) {
     toggle.setAttribute("aria-expanded", String(!collapsed));
   }
   if (arrow) {
-    arrow.textContent = collapsed ? "▸" : "▾";
+    arrow.textContent = collapsed ? ">" : "v";
   }
   if (persist && key) {
     try {
@@ -936,6 +1266,7 @@ function loadExtensionConfig() {
     const config = JSON.parse(raw);
     if (config.image) {
       el.imageProvider.value = config.image.provider || el.imageProvider.value;
+      el.imageApiProvider.value = config.image.api_provider_id || "";
       el.imageEndpoint.value = config.image.endpoint || "";
       el.imageModel.value = config.image.model || "";
       el.imageAspectRatio.value = config.image.aspect_ratio || el.imageAspectRatio.value;
@@ -944,7 +1275,9 @@ function loadExtensionConfig() {
     }
     if (config.vision) {
       el.visionProvider.value = config.vision.provider || el.visionProvider.value;
+      el.visionApiProvider.value = config.vision.api_provider_id || "";
       el.visionEndpoint.value = config.vision.endpoint || "";
+      el.visionPrompt.value = config.vision.prompt || el.visionPrompt.value;
       renderVisionModelControl(config.vision.model || "");
     }
   } catch {
@@ -953,10 +1286,12 @@ function loadExtensionConfig() {
 }
 
 function saveImageExtensionConfig() {
+  const provider = extensionApiProvider("image");
   writeExtensionConfig({
     image: {
       provider: el.imageProvider.value,
-      endpoint: el.imageEndpoint.value.trim(),
+      api_provider_id: el.imageApiProvider.value || provider?.id || null,
+      endpoint: extensionEndpoint("image", provider),
       model: el.imageModel.value.trim(),
       aspect_ratio: el.imageAspectRatio.value,
       steps: Number(el.imageSteps.value) || 24,
@@ -967,11 +1302,14 @@ function saveImageExtensionConfig() {
 }
 
 function saveVisionExtensionConfig() {
+  const provider = extensionApiProvider("vision");
   writeExtensionConfig({
     vision: {
       provider: el.visionProvider.value,
-      endpoint: el.visionEndpoint.value.trim(),
+      api_provider_id: el.visionApiProvider.value || provider?.id || null,
+      endpoint: extensionEndpoint("vision", provider),
       model: selectedModelValue(el.visionModelSelect, el.visionModel),
+      prompt: el.visionPrompt.value.trim(),
     },
   });
   el.visionCaptionStatus.textContent = "Vision captioning configuration saved.";
@@ -999,6 +1337,102 @@ function renderVisionModelControl(currentValue = "") {
     currentValue || selectedModelValue(el.visionModelSelect, el.visionModel),
     VISION_MODEL_CATALOG
   );
+}
+
+async function openWorkspace() {
+  mountWorkspaceInline();
+  setSidebarMode("workspace");
+  setActiveSideMenu("workspace");
+  el.chatMain.classList.add("workspace-mode");
+  el.workspaceModal.classList.remove("hidden");
+  el.workspaceModal.setAttribute("aria-hidden", "false");
+  syncWorkspacePanelToggles();
+  window.setTimeout(() => el.workspacePrompt.focus(), 0);
+  await loadCharacters();
+  populateWorkspaceCharacters();
+  updateWorkspaceModeBadge();
+  await loadWorkspaceTree();
+  await loadWorkspaceChatsForSelection();
+  await loadWorkspaceEmailSettings();
+  await refreshWorkspaceServices();
+}
+
+function mountWorkspaceInline() {
+  if (el.workspaceModal.classList.contains("workspace-inline")) {
+    return;
+  }
+  el.workspaceModal.className = "workspace-inline hidden";
+  el.workspaceModal.setAttribute("role", "region");
+  el.workspaceModal.setAttribute("aria-label", "Agentic Workspace");
+  el.workspaceModal.setAttribute("aria-hidden", "true");
+  el.workspaceModal.removeAttribute("aria-modal");
+  el.workspaceWindow.style.transform = "";
+  state.workspaceOffset = { x: 0, y: 0 };
+  el.chatMain.insertBefore(el.workspaceModal, el.chatMessages);
+}
+
+function closeWorkspaceInline() {
+  if (!el.workspaceModal) {
+    return;
+  }
+  el.workspaceModal.classList.add("hidden");
+  el.workspaceModal.setAttribute("aria-hidden", "true");
+  el.chatMain.classList.remove("workspace-mode");
+  if (document.activeElement && el.workspaceModal.contains(document.activeElement)) {
+    el.messageInput.focus();
+  }
+  if (!state.activeCharacter) {
+    renderNoCharacterPlaceholder();
+  }
+  setSidebarMode("chat");
+  setActiveSideMenu("home");
+}
+
+function toggleWorkspacePanel(panel) {
+  const className = panel === "files" ? "hide-files" : "hide-config";
+  const button = panel === "files" ? el.toggleWorkspaceFiles : el.toggleWorkspaceConfig;
+  const hidden = el.workspaceWindow.classList.toggle(className);
+  button.setAttribute("aria-pressed", String(!hidden));
+  button.classList.toggle("is-active", !hidden);
+}
+
+function syncWorkspacePanelToggles() {
+  const filesVisible = !el.workspaceWindow.classList.contains("hide-files");
+  const configVisible = !el.workspaceWindow.classList.contains("hide-config");
+  el.toggleWorkspaceFiles.setAttribute("aria-pressed", String(filesVisible));
+  el.toggleWorkspaceConfig.setAttribute("aria-pressed", String(configVisible));
+  el.toggleWorkspaceFiles.classList.toggle("is-active", filesVisible);
+  el.toggleWorkspaceConfig.classList.toggle("is-active", configVisible);
+}
+
+function bindWorkspaceDrag() {
+  el.workspaceDragHandle.addEventListener("pointerdown", (event) => {
+    if (el.workspaceModal.classList.contains("workspace-inline")) {
+      return;
+    }
+    if (event.target.closest("button")) {
+      return;
+    }
+    state.workspaceDrag = {
+      startX: event.clientX,
+      startY: event.clientY,
+      baseX: state.workspaceOffset.x,
+      baseY: state.workspaceOffset.y,
+    };
+    el.workspaceDragHandle.setPointerCapture?.(event.pointerId);
+  });
+  el.workspaceDragHandle.addEventListener("pointermove", (event) => {
+    if (!state.workspaceDrag) {
+      return;
+    }
+    const nextX = state.workspaceDrag.baseX + event.clientX - state.workspaceDrag.startX;
+    const nextY = state.workspaceDrag.baseY + event.clientY - state.workspaceDrag.startY;
+    state.workspaceOffset = { x: nextX, y: nextY };
+    el.workspaceWindow.style.transform = `translate(${nextX}px, ${nextY}px)`;
+  });
+  el.workspaceDragHandle.addEventListener("pointerup", () => {
+    state.workspaceDrag = null;
+  });
 }
 
 function openModelMarket() {
@@ -1036,7 +1470,1110 @@ function closeModal(modal) {
 }
 
 function closeAllModals() {
-  [el.modelMarketModal, el.consoleLogsModal, el.modelDiagnosticModal, el.characterModal, el.personaModal, el.lorebookModal, el.newChatModal].forEach(closeModal);
+  closeWorkspaceInline();
+  [
+    el.modelMarketModal,
+    el.consoleLogsModal,
+    el.modelDiagnosticModal,
+    el.characterModal,
+    el.personaModal,
+    el.lorebookModal,
+    el.newChatModal,
+    el.chatSettingsModal,
+  ].forEach(closeModal);
+}
+
+function populateWorkspaceCharacters() {
+  const current = el.workspaceAgentCharacter.value;
+  el.workspaceAgentCharacter.innerHTML = '<option value="">Base System Prompt</option>';
+  state.characters.forEach((character) => {
+    const option = document.createElement("option");
+    option.value = character.id;
+    option.textContent = character.name;
+    el.workspaceAgentCharacter.appendChild(option);
+  });
+  if ([...el.workspaceAgentCharacter.options].some((option) => option.value === current)) {
+    el.workspaceAgentCharacter.value = current;
+  } else if (state.activeCharacter?.id) {
+    el.workspaceAgentCharacter.value = state.activeCharacter.id;
+  }
+  const hasCharacters = state.characters.length > 0;
+  el.workspaceAgentCharacterField.classList.toggle("hidden", !hasCharacters);
+  el.workspaceAgentBase.classList.toggle("hidden", hasCharacters);
+}
+
+function updateWorkspaceModeBadge() {
+  const label = el.workspaceControlLevel.options[el.workspaceControlLevel.selectedIndex]?.textContent || "Read-Only";
+  el.workspaceModeBadge.textContent = label.replace(" (Authorization Required)", "");
+}
+
+async function loadWorkspaceEmailSettings() {
+  try {
+    const response = await fetch("/api/workspace/email-settings", { cache: "no-store" });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.detail || "Could not load email settings.");
+    }
+    state.workspaceEmailPresets = payload.presets || {};
+    el.workspaceEmailProvider.value = payload.provider || "custom";
+    el.workspaceSmtpServer.value = payload.smtp_server || "";
+    el.workspaceSmtpPort.value = String(payload.smtp_port || 587);
+    el.workspaceSmtpEmail.value = payload.smtp_email || "";
+    el.workspaceSmtpPassword.value = "";
+    el.workspaceEmailStatus.textContent = payload.has_password
+      ? "SMTP password is saved locally. Leave blank to keep it."
+      : "No SMTP password saved. Browser fallback remains available.";
+  } catch (error) {
+    el.workspaceEmailStatus.textContent = error.message || "Could not load SMTP settings.";
+  }
+}
+
+function applyWorkspaceEmailPreset() {
+  const preset = state.workspaceEmailPresets?.[el.workspaceEmailProvider.value];
+  if (!preset || el.workspaceEmailProvider.value === "custom") {
+    return;
+  }
+  el.workspaceSmtpServer.value = preset.smtp_server || "";
+  el.workspaceSmtpPort.value = String(preset.smtp_port || 587);
+}
+
+function workspaceEmailPayload() {
+  return {
+    provider: el.workspaceEmailProvider.value || "custom",
+    smtp_server: el.workspaceSmtpServer.value.trim(),
+    smtp_port: Number(el.workspaceSmtpPort.value || 587),
+    smtp_email: el.workspaceSmtpEmail.value.trim(),
+    smtp_password: el.workspaceSmtpPassword.value,
+  };
+}
+
+async function saveWorkspaceEmailSettings() {
+  el.workspaceSaveEmailSettings.disabled = true;
+  el.workspaceEmailStatus.textContent = "Saving SMTP settings locally.";
+  try {
+    const response = await fetch("/api/workspace/email-settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(workspaceEmailPayload()),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.detail || "Could not save SMTP settings.");
+    }
+    el.workspaceSmtpPassword.value = "";
+    el.workspaceEmailStatus.textContent = payload.has_password
+      ? "SMTP settings saved. Password is retained as a protected local secret."
+      : "SMTP settings saved without a password.";
+  } catch (error) {
+    el.workspaceEmailStatus.textContent = error.message || "Could not save SMTP settings.";
+  } finally {
+    el.workspaceSaveEmailSettings.disabled = false;
+  }
+}
+
+async function testWorkspaceEmailSettings() {
+  el.workspaceTestEmailSettings.disabled = true;
+  el.workspaceEmailStatus.textContent = "Testing SMTP login.";
+  try {
+    const response = await fetch("/api/workspace/email-settings/test", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(workspaceEmailPayload()),
+    });
+    const payload = await response.json();
+    el.workspaceEmailStatus.textContent = payload.message || (payload.ok ? "SMTP login validated." : "SMTP validation failed.");
+  } catch (error) {
+    el.workspaceEmailStatus.textContent = error.message || "SMTP validation failed.";
+  } finally {
+    el.workspaceTestEmailSettings.disabled = false;
+  }
+}
+
+async function loadWorkspaceTree() {
+  el.workspaceTree.innerHTML = '<p class="muted">Scanning ./workspace...</p>';
+  try {
+    const response = await fetch("/api/workspace/tree", { cache: "no-store" });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.detail || "Could not read workspace tree.");
+    }
+    state.workspaceTree = payload.nodes || [];
+    renderWorkspaceTree();
+  } catch (error) {
+    el.workspaceTree.innerHTML = "";
+    appendWorkspaceLog(`Workspace tree error: ${error.message}`);
+  }
+}
+
+function renderWorkspaceTree() {
+  el.workspaceTree.innerHTML = "";
+  if (!state.workspaceTree.length) {
+    const empty = document.createElement("p");
+    empty.className = "muted";
+    empty.textContent = "The workspace folder is empty.";
+    el.workspaceTree.appendChild(empty);
+    return;
+  }
+  const fragment = document.createDocumentFragment();
+  state.workspaceTree.forEach((node) => fragment.appendChild(workspaceNodeElement(node, 0)));
+  el.workspaceTree.appendChild(fragment);
+}
+
+function workspaceNodeElement(node, depth) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "workspace-node-wrap";
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "workspace-node";
+  button.dataset.path = node.path;
+  button.dataset.kind = node.kind;
+  button.classList.toggle("selected", state.workspaceSelectedPath === node.path);
+  button.style.setProperty("--node-depth", String(depth));
+  button.textContent = `${node.kind === "folder" ? "[+]" : "[file]"} ${node.name}`;
+  wrapper.appendChild(button);
+
+  if (node.children?.length) {
+    const children = document.createElement("div");
+    children.className = "workspace-node-children";
+    node.children.forEach((child) => children.appendChild(workspaceNodeElement(child, depth + 1)));
+    wrapper.appendChild(children);
+  }
+  return wrapper;
+}
+
+async function handleWorkspaceTreeClick(event) {
+  const button = event.target.closest(".workspace-node");
+  if (!button && event.target === el.workspaceTree) {
+    state.workspaceSelectedPath = "";
+    state.workspaceSelectedKind = "";
+    el.workspacePathStatus.textContent = "Selected: Root Workspace";
+    renderWorkspaceTree();
+    await loadWorkspaceChatsForSelection();
+    return;
+  }
+  if (!button) {
+    return;
+  }
+  state.workspaceSelectedPath = button.dataset.path || "";
+  state.workspaceSelectedKind = button.dataset.kind || "";
+  el.workspacePathStatus.textContent = state.workspaceSelectedPath
+    ? `Selected: ${state.workspaceSelectedPath}`
+    : "No folder selected.";
+  renderWorkspaceTree();
+  await loadWorkspaceChatsForSelection();
+}
+
+async function createWorkspaceFolder() {
+  const base = state.workspaceSelectedPath || "";
+  const name = window.prompt("Folder name inside ./workspace", base ? `${base}/new-folder` : "new-folder");
+  if (!name) {
+    return;
+  }
+  try {
+    const response = await fetch("/api/workspace/folders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path: name.trim() }),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.detail || "Could not create folder.");
+    }
+    state.workspaceTree = payload.nodes || [];
+    state.workspaceSelectedPath = name.trim();
+    renderWorkspaceTree();
+    appendWorkspaceLog(`Created folder: ${state.workspaceSelectedPath}`);
+  } catch (error) {
+    appendWorkspaceLog(`Create folder failed: ${error.message}`);
+  }
+}
+
+async function deleteWorkspacePath() {
+  if (!state.workspaceSelectedPath) {
+    appendWorkspaceLog("Select a workspace file or folder before deleting.");
+    return;
+  }
+  if (!window.confirm(`Delete ${state.workspaceSelectedPath}? Empty folders and files only.`)) {
+    return;
+  }
+  try {
+    const response = await fetch("/api/workspace/path", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path: state.workspaceSelectedPath }),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.detail || "Could not delete workspace path.");
+    }
+    appendWorkspaceLog(`Deleted: ${state.workspaceSelectedPath}`);
+    state.workspaceSelectedPath = "";
+    state.workspaceTree = payload.nodes || [];
+    renderWorkspaceTree();
+  } catch (error) {
+    appendWorkspaceLog(`Delete failed: ${error.message}`);
+  }
+}
+
+async function editWorkspaceMetadata() {
+  const path = state.workspaceSelectedPath || ".";
+  const note = window.prompt(`Metadata note for ${path}`, "");
+  if (note === null) {
+    return;
+  }
+  const permissionMode = window.prompt("Permission label for this path", "inherit");
+  if (permissionMode === null) {
+    return;
+  }
+  try {
+    const response = await fetch("/api/workspace/metadata", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        path,
+        metadata: { note },
+        permissions: { mode: permissionMode || "inherit", edited_from_ui: true },
+      }),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.detail || "Could not save workspace metadata.");
+    }
+    appendWorkspaceLog(`Saved metadata for ${path}.`);
+  } catch (error) {
+    appendWorkspaceLog(`Metadata save failed: ${error.message}`);
+  }
+}
+
+async function sendWorkspacePrompt(event) {
+  event.preventDefault();
+  const prompt = el.workspacePrompt.value.trim();
+  const hasImage = Boolean(state.workspacePendingImage);
+  if ((!prompt && !hasImage) || state.workspaceRunning) {
+    return;
+  }
+  await ensureWorkspaceChatSession();
+  const history = state.workspaceMessages.slice();
+  state.workspaceRunning = true;
+  el.workspaceSend.disabled = true;
+  el.workspaceStop.disabled = false;
+  let workspacePrompt = prompt;
+  let transientVisionContext = "";
+  try {
+    const imagePayload = await prepareImageForSend("workspace", prompt);
+    transientVisionContext = imagePayload.visionContext;
+    const visiblePrompt = [prompt, imagePayload.messageSuffix].filter(Boolean).join("\n\n");
+    workspacePrompt = prompt || "Analyze the attached image and respond with useful observations.";
+    el.workspacePrompt.value = "";
+    appendWorkspaceMessage("user", "You", visiblePrompt || workspacePrompt);
+    state.workspaceMessages.push(workspaceChatMessage("user", visiblePrompt || workspacePrompt));
+    saveWorkspaceChatSession();
+    appendWorkspaceLog("Agent request dispatched.");
+    const response = await fetch("/api/workspace/agent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(
+        workspaceAgentPayload(workspacePrompt, {
+          messages: history,
+          vision_context: transientVisionContext,
+        })
+      ),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.detail || payload.message || "Workspace agent failed.");
+    }
+    handleWorkspaceAgentResponse(payload);
+  } catch (error) {
+    appendWorkspaceMessage("assistant", "Workspace Error", error.message);
+    appendWorkspaceLog(`Agent error: ${error.message}`);
+  } finally {
+    clearPendingImage("workspace");
+    state.workspaceRunning = false;
+    el.workspaceSend.disabled = false;
+    el.workspaceStop.disabled = true;
+  }
+}
+
+async function interruptWorkspaceGeneration() {
+  if (!state.workspaceRunning) {
+    appendWorkspaceLog("No active workspace generation is running.");
+    return;
+  }
+  const sessionId = state.workspaceChatId || "default";
+  try {
+    const response = await fetch("/api/interrupt", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionId }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload.detail || payload.message || "Interrupt request failed.");
+    }
+    appendWorkspaceLog(`Stop signal sent for workspace session ${payload.session_id || sessionId}.`);
+  } catch (error) {
+    appendWorkspaceLog(`Stop signal failed: ${error.message}`);
+  }
+}
+
+function workspaceAgentPayload(prompt, extra = {}) {
+  const source = el.inferenceSource.value;
+  const provider = activeApiProvider();
+  const payload = {
+    prompt,
+    session_id: state.workspaceChatId || "default",
+    source,
+    character_id: el.workspaceAgentCharacter.value || null,
+    current_directory: selectedWorkspaceDirectory(),
+    control_level: el.workspaceControlLevel.value,
+    local: {
+      template: el.promptTemplate.value,
+    },
+    ...extra,
+  };
+  if (source === "cloud") {
+    payload.cloud = {
+      provider: provider ? inferCloudProvider(provider.base_url) : el.cloudProvider.value,
+      base_url: provider?.base_url || el.baseUrl.value,
+      model: provider?.default_model || selectedModelValue(el.cloudModelSelect, el.cloudModel),
+      api_key: provider ? "" : el.apiKey.value,
+    };
+    payload.api_provider_id = provider?.id || null;
+  }
+  return payload;
+}
+
+function handleWorkspaceAgentResponse(payload) {
+  const pendingTasks = workspacePendingTasksFromPayload(payload);
+  const assistantPresentation = workspaceAssistantPresentation(payload.assistant_text || "");
+  const telemetryTools = dedupeWorkspaceTools([
+    ...assistantPresentation.tools,
+    ...pendingTasks,
+  ]);
+
+  if (telemetryTools.length) {
+    appendWorkspaceToolTelemetry(telemetryTools, payload.status);
+  }
+
+  if (payload.status === "completed" && assistantPresentation.visibleText) {
+    appendWorkspaceMessage("assistant", "Workspace Agent", assistantPresentation.visibleText);
+    state.workspaceMessages.push(workspaceChatMessage("assistant", assistantPresentation.visibleText));
+    saveWorkspaceChatSession();
+  }
+  if (payload.output) {
+    appendWorkspaceLog(payload.output);
+    loadWorkspaceTree();
+    refreshWorkspaceServices();
+  }
+  if (payload.status === "needs_approval" && pendingTasks.length) {
+    state.workspacePendingTask = pendingTasks[0];
+    state.workspacePendingContext = Array.isArray(payload.context_messages)
+      ? payload.context_messages
+      : state.workspaceMessages.slice();
+    appendWorkspaceApproval(payload.message || "Agent requested permission.", pendingTasks[0]);
+    return;
+  }
+  if (payload.status === "interrupted") {
+    appendWorkspaceLog(`INTERRUPTED: ${payload.message || "Workspace execution stopped."}`);
+    if (assistantPresentation.visibleText) {
+      appendWorkspaceMessage("assistant", "Workspace Agent", assistantPresentation.visibleText);
+    }
+    return;
+  }
+  if (payload.status === "denied" || payload.status === "error") {
+    appendWorkspaceLog(`${payload.status.toUpperCase()}: ${payload.message}`);
+  } else if (payload.message) {
+    appendWorkspaceLog(payload.message);
+  }
+  appendWorkspaceMetrics(payload);
+}
+
+function appendWorkspaceMetrics(payload = {}) {
+  if (!["completed", "error", "denied", "interrupted"].includes(payload.status)) {
+    return;
+  }
+  const elapsed = Number(payload.elapsed_seconds || 0);
+  const totalTokens = Number(payload.total_tokens || 0);
+  if (!elapsed && !totalTokens) {
+    return;
+  }
+  const duration =
+    elapsed >= 60
+      ? `${Math.floor(elapsed / 60)}m ${Math.round(elapsed % 60)}s`
+      : `${elapsed.toFixed(elapsed < 10 ? 1 : 0)}s`;
+  const promptTokens = Number(payload.prompt_tokens || 0);
+  const completionTokens = Number(payload.completion_tokens || 0);
+  const text = [
+    `Status: ${payload.status}`,
+    `Duration: ${duration}`,
+    `Est. tokens: ${totalTokens.toLocaleString()} total (${promptTokens.toLocaleString()} prompt / ${completionTokens.toLocaleString()} output)`,
+  ].join(" | ");
+  const article = document.createElement("article");
+  article.className = "workspace-message metrics";
+  article.textContent = text;
+  el.workspaceChatLog.appendChild(article);
+  el.workspaceChatLog.scrollTop = el.workspaceChatLog.scrollHeight;
+}
+
+function dedupeWorkspaceTools(tools) {
+  const seen = new Set();
+  const unique = [];
+  tools.forEach((tool) => {
+    if (!tool) {
+      return;
+    }
+    const key = JSON.stringify({
+      action: tool.action || "",
+      path: tool.path || "",
+      command: tool.command || "",
+      target_dir: tool.target_dir || "",
+      service_name: tool.service_name || "",
+      to: tool.to || "",
+    });
+    if (seen.has(key)) {
+      return;
+    }
+    seen.add(key);
+    unique.push(tool);
+  });
+  return unique;
+}
+
+function appendWorkspaceToolTelemetry(tools, status = "completed") {
+  const prefix = status === "needs_approval" ? "Awaiting approval" : "Tool activity";
+  const lines = tools.map((tool, index) => {
+    const target = tool.path || tool.command || tool.target_dir || tool.to || tool.service_name || ".";
+    return `${prefix} [${index + 1}/${tools.length}]: ${tool.action} -> ${target}`;
+  });
+  appendWorkspaceLog(lines.join("\n"));
+}
+
+async function refreshWorkspaceServices() {
+  try {
+    const response = await fetch("/api/workspace/services", { cache: "no-store" });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.detail || "Could not read workspace services.");
+    }
+    renderWorkspaceServiceBadges(payload.services || []);
+  } catch (error) {
+    appendWorkspaceLog(`Workspace service status failed: ${error.message}`);
+  }
+}
+
+function renderWorkspaceServiceBadges(services) {
+  const panel = ensureWorkspaceServiceStatusPanel();
+  panel.innerHTML = "";
+  const running = services.filter((service) => service.running);
+  if (!running.length) {
+    panel.classList.add("hidden");
+    return;
+  }
+  panel.classList.remove("hidden");
+  running.forEach((service) => {
+    const badge = document.createElement("span");
+    badge.className = "workspace-service-badge";
+    badge.textContent = `${service.service_name} active · PID ${service.pid}`;
+    panel.appendChild(badge);
+  });
+}
+
+function ensureWorkspaceServiceStatusPanel() {
+  let panel = document.getElementById("workspaceServiceStatus");
+  if (panel) {
+    return panel;
+  }
+  panel = document.createElement("div");
+  panel.id = "workspaceServiceStatus";
+  panel.className = "workspace-service-status hidden";
+  el.workspaceExecutionLog.parentElement.insertBefore(panel, el.workspaceExecutionLog);
+  return panel;
+}
+
+function appendWorkspaceMessage(role, title, text, explicitTools = []) {
+  const article = document.createElement("article");
+  article.className = `workspace-message ${role}`;
+  const strong = document.createElement("strong");
+  strong.textContent = title;
+  const paragraph = document.createElement("p");
+  const presentation = role === "assistant" ? workspaceAssistantPresentation(text || "") : {
+    visibleText: text || "",
+    tools: [],
+  };
+  const tools = [...presentation.tools, ...explicitTools];
+  paragraph.textContent = presentation.visibleText || "";
+  article.append(strong);
+  if (presentation.visibleText) {
+    article.appendChild(paragraph);
+  }
+  if (tools.length) {
+    article.appendChild(workspaceToolBadgeRow(tools));
+  }
+  if (!presentation.visibleText && !tools.length) {
+    paragraph.textContent = "";
+    article.appendChild(paragraph);
+  }
+  el.workspaceChatLog.appendChild(article);
+  el.workspaceChatLog.scrollTop = el.workspaceChatLog.scrollHeight;
+}
+
+async function loadWorkspaceChatsForSelection() {
+  const folderPath = selectedWorkspaceDirectory();
+  try {
+    const response = await fetch(
+      `/api/workspace/chats?folder_path=${encodeURIComponent(folderPath)}`,
+      { cache: "no-store" }
+    );
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.detail || "Could not load workspace chats.");
+    }
+    state.workspaceChats = payload || [];
+    renderWorkspaceChatList();
+    if (state.workspaceChats.length) {
+      applyWorkspaceChatSession(state.workspaceChats[0]);
+    } else {
+      await createWorkspaceChatForSelection({ silent: true });
+    }
+  } catch (error) {
+    appendWorkspaceLog(`Workspace chat load failed: ${error.message}`);
+  }
+}
+
+function renderWorkspaceChatList() {
+  el.workspaceChatList.innerHTML = "";
+  if (!state.workspaceChats.length) {
+    const empty = document.createElement("p");
+    empty.className = "muted";
+    empty.textContent = "No workspace chats yet.";
+    el.workspaceChatList.appendChild(empty);
+    return;
+  }
+  state.workspaceChats.forEach((chat) => {
+    const row = document.createElement("div");
+    row.className = "workspace-chat-item";
+    row.classList.toggle("active", chat.id === state.workspaceChatId);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.workspaceChatId = chat.id;
+    button.textContent = chat.title || "Workspace Chat";
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "workspace-chat-delete";
+    remove.dataset.deleteWorkspaceChat = chat.id;
+    remove.title = "Delete workspace chat";
+    remove.setAttribute("aria-label", "Delete workspace chat");
+    remove.textContent = "x";
+    row.append(button, remove);
+    el.workspaceChatList.appendChild(row);
+  });
+}
+
+async function handleWorkspaceChatListClick(event) {
+  const deleteButton = event.target.closest("[data-delete-workspace-chat]");
+  if (deleteButton) {
+    const chatId = deleteButton.dataset.deleteWorkspaceChat;
+    if (!window.confirm("Delete this workspace chat thread?")) {
+      return;
+    }
+    try {
+      const response = await fetch(`/api/workspace/chats/${encodeURIComponent(chatId)}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        const payload = await response.json();
+        throw new Error(payload.detail || "Could not delete workspace chat.");
+      }
+      await loadWorkspaceChatsForSelection();
+    } catch (error) {
+      appendWorkspaceLog(`Workspace chat delete failed: ${error.message}`);
+    }
+    return;
+  }
+  const button = event.target.closest("[data-workspace-chat-id]");
+  if (!button) {
+    return;
+  }
+  const chat = state.workspaceChats.find((item) => item.id === button.dataset.workspaceChatId);
+  if (chat) {
+    applyWorkspaceChatSession(chat);
+    renderWorkspaceChatList();
+  }
+}
+
+async function createWorkspaceChatForSelection(options = {}) {
+  const folderPath = selectedWorkspaceDirectory();
+  try {
+    const response = await fetch("/api/workspace/chats", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        folder_path: folderPath,
+        character_id: el.workspaceAgentCharacter.value || null,
+        messages: [],
+      }),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.detail || "Could not create workspace chat.");
+    }
+    state.workspaceChats = [payload, ...state.workspaceChats.filter((chat) => chat.id !== payload.id)];
+    applyWorkspaceChatSession(payload);
+    renderWorkspaceChatList();
+    if (!options.silent) {
+      appendWorkspaceLog(`New workspace chat created for ${folderPath || "root"}.`);
+    }
+    return payload;
+  } catch (error) {
+    appendWorkspaceLog(`Workspace chat create failed: ${error.message}`);
+    return null;
+  }
+}
+
+async function ensureWorkspaceChatSession() {
+  if (state.workspaceChatId) {
+    return;
+  }
+  await createWorkspaceChatForSelection({ silent: true });
+}
+
+function applyWorkspaceChatSession(session) {
+  state.workspaceChatId = session.id;
+  state.workspaceMessages = Array.isArray(session.messages) ? [...session.messages] : [];
+  renderWorkspaceChatMessages();
+}
+
+function renderWorkspaceChatMessages() {
+  el.workspaceChatLog.innerHTML = "";
+  if (!state.workspaceMessages.length) {
+    const article = document.createElement("article");
+    article.className = "workspace-message assistant";
+    const strong = document.createElement("strong");
+    strong.textContent = "Workspace ready.";
+    const paragraph = document.createElement("p");
+    paragraph.textContent = "Ask the assigned agent to inspect files, draft changes, or plan tasks inside the sandbox.";
+    article.append(strong, paragraph);
+    el.workspaceChatLog.appendChild(article);
+    return;
+  }
+  state.workspaceMessages.forEach((message) => {
+    if (message.role === "user") {
+      appendWorkspaceMessage("user", "You", message.content);
+    } else if (message.role === "assistant") {
+      appendWorkspaceMessage("assistant", "Workspace Agent", message.content);
+    }
+  });
+}
+
+async function clearWorkspaceChat() {
+  if (!state.workspaceChatId) {
+    return;
+  }
+  try {
+    const response = await fetch("/api/workspace/chats/clear", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: state.workspaceChatId }),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.detail || "Could not clear workspace chat.");
+    }
+    const index = state.workspaceChats.findIndex((chat) => chat.id === payload.id);
+    if (index >= 0) {
+      state.workspaceChats[index] = payload;
+    }
+    applyWorkspaceChatSession(payload);
+    renderWorkspaceChatList();
+    appendWorkspaceLog("Workspace chat thread cleared.");
+  } catch (error) {
+    appendWorkspaceLog(`Workspace chat clear failed: ${error.message}`);
+  }
+}
+
+async function pruneWorkspaceChatContext() {
+  if (!state.workspaceChatId) {
+    return;
+  }
+  if (!window.confirm("Flush tool logs and keep only your prompts in this workspace thread?")) {
+    return;
+  }
+  try {
+    const response = await fetch("/api/workspace/chats/prune_tools", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: state.workspaceChatId }),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.detail || "Could not flush workspace context.");
+    }
+    const index = state.workspaceChats.findIndex((chat) => chat.id === payload.id);
+    if (index >= 0) {
+      state.workspaceChats[index] = payload;
+    }
+    applyWorkspaceChatSession(payload);
+    renderWorkspaceChatList();
+    appendWorkspaceLog("Context flushed. User prompts were preserved; tool chatter was pruned.");
+  } catch (error) {
+    appendWorkspaceLog(`Context flush failed: ${error.message}`);
+  }
+}
+
+async function saveWorkspaceChatSession() {
+  if (!state.workspaceChatId) {
+    return;
+  }
+  try {
+    const response = await fetch("/api/workspace/chats", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: state.workspaceChatId,
+        folder_path: selectedWorkspaceDirectory(),
+        character_id: el.workspaceAgentCharacter.value || null,
+        messages: state.workspaceMessages,
+      }),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.detail || "Could not save workspace chat.");
+    }
+    const index = state.workspaceChats.findIndex((chat) => chat.id === payload.id);
+    if (index >= 0) {
+      state.workspaceChats[index] = payload;
+    } else {
+      state.workspaceChats.unshift(payload);
+    }
+    renderWorkspaceChatList();
+  } catch (error) {
+    appendWorkspaceLog(`Workspace chat save failed: ${error.message}`);
+  }
+}
+
+function workspaceChatMessage(role, content) {
+  return {
+    role,
+    content,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+function selectedWorkspaceDirectory() {
+  const statusText = el.workspacePathStatus?.textContent || "";
+  let selected = state.workspaceSelectedPath || statusText.replace(/^Selected:\s*/i, "").trim();
+  if (!selected || selected === "No folder selected." || selected === "Root Workspace") {
+    return "";
+  }
+  const node = findWorkspaceNode(selected, state.workspaceTree);
+  if ((node?.kind || state.workspaceSelectedKind) === "file") {
+    const parts = selected.split("/").filter(Boolean);
+    parts.pop();
+    return parts.join("/");
+  }
+  return selected;
+}
+
+function findWorkspaceNode(path, nodes = []) {
+  for (const node of nodes) {
+    if (node.path === path) {
+      return node;
+    }
+    const child = findWorkspaceNode(path, node.children || []);
+    if (child) {
+      return child;
+    }
+  }
+  return null;
+}
+
+function workspaceAssistantPresentation(text) {
+  const blocks = extractJsonBlocks(text);
+  const tools = [];
+  let visibleText = text;
+  blocks.forEach((block) => {
+    const blockTools = workspaceToolsFromPayload(block.value);
+    if (!blockTools.length) {
+      return;
+    }
+    tools.push(...blockTools);
+    visibleText = visibleText.replace(block.raw, "");
+  });
+  visibleText = visibleText
+    .replace(/```json\s*```/gi, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  return { visibleText, tools };
+}
+
+function extractJsonBlocks(text) {
+  const blocks = [];
+  for (let index = 0; index < text.length; index += 1) {
+    const opener = text[index];
+    if (opener !== "{" && opener !== "[") {
+      continue;
+    }
+    const closer = opener === "{" ? "}" : "]";
+    const stack = [closer];
+    let inString = false;
+    let escaped = false;
+    for (let cursor = index + 1; cursor < text.length; cursor += 1) {
+      const char = text[cursor];
+      if (inString) {
+        if (escaped) {
+          escaped = false;
+        } else if (char === "\\") {
+          escaped = true;
+        } else if (char === '"') {
+          inString = false;
+        }
+        continue;
+      }
+      if (char === '"') {
+        inString = true;
+      } else if (char === "{" || char === "[") {
+        stack.push(char === "{" ? "}" : "]");
+      } else if (char === stack[stack.length - 1]) {
+        stack.pop();
+        if (!stack.length) {
+          const raw = text.slice(index, cursor + 1);
+          try {
+            blocks.push({ raw, value: JSON.parse(raw) });
+            index = cursor;
+          } catch {
+            // Not a valid JSON block; keep scanning from the next character.
+          }
+          break;
+        }
+      }
+    }
+  }
+  return blocks;
+}
+
+function workspaceToolsFromPayload(payload) {
+  if (Array.isArray(payload)) {
+    return payload.flatMap((item) => workspaceToolsFromPayload(item));
+  }
+  if (!payload || typeof payload !== "object") {
+    return [];
+  }
+  const candidates = [];
+  if (payload.tool === "run_terminal_command" && payload.command) {
+    candidates.push({
+      action: "run_terminal_command",
+      command: payload.command,
+      target_dir: payload.target_dir || payload.cwd || "",
+    });
+  }
+  if (payload.tool === "start_background_service" && payload.command) {
+    candidates.push({
+      action: "start_background_service",
+      command: payload.command,
+      service_name: payload.service_name || "",
+      target_dir: payload.target_dir || payload.cwd || "",
+    });
+  }
+  if (payload.tool === "run_automation_script") {
+    const legacyEngine = String(payload.engine || "").toLowerCase();
+    candidates.push({
+      action: "execute_automation_task",
+      engine: payload.engine || "",
+      mode: payload.mode || (legacyEngine === "pyautogui" ? "desktop" : "stealth"),
+      script_content: payload.script_content || payload.script || "",
+      target_dir: payload.target_dir || payload.cwd || "",
+    });
+  }
+  if (payload.tool === "execute_automation_task") {
+    candidates.push({
+      action: "execute_automation_task",
+      mode: payload.mode || "",
+      script_content: payload.script_content || payload.script || "",
+      target_dir: payload.target_dir || payload.cwd || "",
+    });
+  }
+  if (payload.tool === "send_automation_email") {
+    candidates.push({
+      action: "send_automation_email",
+      to: payload.to || "",
+    });
+  }
+  if (Array.isArray(payload.tools)) {
+    candidates.push(...payload.tools);
+  }
+  if (Array.isArray(payload.workspace_tools)) {
+    candidates.push(...payload.workspace_tools);
+  }
+  ["tool", "workspace_tool", "tool_call"].forEach((key) => {
+    if (payload[key]) {
+      candidates.push(payload[key]);
+    }
+  });
+  if (payload.action) {
+    candidates.push(payload);
+  }
+  return candidates
+    .flatMap((candidate) => Array.isArray(candidate) ? workspaceToolsFromPayload(candidate) : [candidate])
+    .filter((candidate) => candidate && typeof candidate === "object" && candidate.action)
+    .map((candidate) => {
+      const engine = String(candidate.engine || "");
+      const action = candidate.action === "run_automation_script"
+        ? "execute_automation_task"
+        : String(candidate.action || "");
+      const mode = String(
+        candidate.mode ||
+          (action === "execute_automation_task" && engine.toLowerCase() === "pyautogui"
+            ? "desktop"
+            : action === "execute_automation_task"
+              ? "stealth"
+              : "")
+      );
+      return {
+        action,
+        path: String(candidate.path || ""),
+        command: String(candidate.command || ""),
+        target_dir: String(candidate.target_dir || candidate.cwd || ""),
+        service_name: String(candidate.service_name || ""),
+        engine,
+        mode,
+        script_content: String(candidate.script_content || candidate.script || ""),
+        to: String(candidate.to || ""),
+      };
+    });
+}
+
+function workspaceToolBadgeRow(tools) {
+  const row = document.createElement("div");
+  row.className = "workspace-tool-badge-row";
+  tools.forEach((tool) => {
+    const badge = document.createElement("span");
+    badge.className = "workspace-tool-badge dynamic-status";
+    const target =
+      tool.path ||
+      tool.command ||
+      tool.target_dir ||
+      tool.to ||
+      tool.service_name ||
+      tool.mode ||
+      tool.engine ||
+      "";
+    badge.textContent = target
+      ? `Tool: ${tool.action} -> ${target}`
+      : `Tool: ${tool.action}`;
+    row.appendChild(badge);
+  });
+  return row;
+}
+
+function workspacePendingTasksFromPayload(payload) {
+  if (Array.isArray(payload.pending_tasks) && payload.pending_tasks.length) {
+    return payload.pending_tasks;
+  }
+  return payload.pending_task ? [payload.pending_task] : [];
+}
+
+function appendWorkspaceApproval(message, task) {
+  const article = document.createElement("article");
+  article.className = "workspace-approval-banner";
+  const description = document.createElement("p");
+  const target =
+    task.path ||
+    task.command ||
+    task.target_dir ||
+    task.to ||
+    task.service_name ||
+    task.mode ||
+    task.engine ||
+    ".";
+  description.textContent = `${message} Action: ${task.action} -> ${target}`;
+  const actions = document.createElement("div");
+  actions.className = "button-row compact-actions";
+  const approve = document.createElement("button");
+  approve.className = "primary-button";
+  approve.type = "button";
+  approve.dataset.workspaceApproval = "approve";
+  approve.textContent = "Approve Task";
+  const deny = document.createElement("button");
+  deny.className = "secondary-button danger-button";
+  deny.type = "button";
+  deny.dataset.workspaceApproval = "deny";
+  deny.textContent = "Deny Task";
+  actions.append(approve, deny);
+  article.append(description, actions);
+  el.workspaceChatLog.appendChild(article);
+  el.workspaceChatLog.scrollTop = el.workspaceChatLog.scrollHeight;
+}
+
+async function handleWorkspaceApprovalClick(event) {
+  const button = event.target.closest("[data-workspace-approval]");
+  if (!button || !state.workspacePendingTask) {
+    return;
+  }
+  const approved = button.dataset.workspaceApproval === "approve";
+  appendWorkspaceLog(approved ? "Approval released. Executing task." : "Task denied by user.");
+  if (!approved) {
+    state.workspacePendingTask = null;
+    state.workspacePendingContext = [];
+    button.closest(".workspace-approval-banner")?.remove();
+    return;
+  }
+  const pendingTask = state.workspacePendingTask;
+  const pendingContext = state.workspacePendingContext.length
+    ? state.workspacePendingContext
+    : state.workspaceMessages.slice();
+  try {
+    const response = await fetch("/api/workspace/agent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(
+        workspaceAgentPayload("Execute approved workspace task.", {
+          approved: true,
+          pending_task: pendingTask || null,
+          pending_tasks: pendingTask ? [pendingTask] : [],
+          messages: pendingContext,
+        })
+      ),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.detail || payload.message || "Approved workspace task failed.");
+    }
+    state.workspacePendingTask = null;
+    state.workspacePendingContext = [];
+    button.closest(".workspace-approval-banner")?.remove();
+    handleWorkspaceAgentResponse(payload);
+  } catch (error) {
+    appendWorkspaceLog(`Approved task failed: ${error.message}`);
+  }
+}
+
+function appendWorkspaceLog(text) {
+  if (!text || !String(text).trim()) {
+    return;
+  }
+  const cleanText = String(text).trim();
+  const current = el.workspaceExecutionLog.textContent.trim();
+  const next = `${current ? `${current}\n\n` : ""}${cleanText}`;
+  el.workspaceExecutionLog.textContent = next;
+  el.workspaceExecutionLog.scrollTop = el.workspaceExecutionLog.scrollHeight;
+  appendWorkspaceActivity(cleanText);
+}
+
+function appendWorkspaceActivity(text) {
+  if (!el.workspaceChatLog) {
+    return;
+  }
+  const article = document.createElement("article");
+  article.className = "workspace-message activity";
+  const strong = document.createElement("strong");
+  strong.textContent = "Activity";
+  const pre = document.createElement("pre");
+  pre.textContent = text.length > 2400 ? `${text.slice(0, 2400)}\n...[truncated]` : text;
+  article.append(strong, pre);
+  el.workspaceChatLog.appendChild(article);
+  el.workspaceChatLog.scrollTop = el.workspaceChatLog.scrollHeight;
 }
 
 async function pollStartupHealth() {
@@ -1425,6 +2962,7 @@ function updateInferenceVisibility() {
   if (!localMode) {
     applyActiveApiProviderToFields();
   }
+  syncQuickModelControls();
 }
 
 function setCloudFieldsEnabled(enabled) {
@@ -1473,11 +3011,14 @@ async function loadApiProviders() {
       setApiProviderEditor(active);
       applyApiProviderToFields(active);
     }
+    loadExtensionConfig();
+    syncQuickModelControls();
   } catch (error) {
     state.apiProviders = [];
     renderApiProviderSelect();
     renderApiProviderList();
     renderSetupProviderOptions();
+    syncQuickModelControls();
     setApiProviderStatus(error.message || "Could not load API providers.");
   }
 }
@@ -1498,6 +3039,48 @@ function renderApiProviderSelect() {
     el.apiProviderSelect.appendChild(option);
   });
   el.apiProviderSelect.value = state.activeApiProviderId || "";
+  renderQuickApiProviderSelect();
+  renderExtensionApiProviderSelects();
+}
+
+function renderQuickApiProviderSelect() {
+  if (!el.quickApiProvider) {
+    return;
+  }
+  el.quickApiProvider.innerHTML = "";
+  if (!state.apiProviders.length) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "No cloud profile";
+    el.quickApiProvider.appendChild(option);
+    return;
+  }
+  state.apiProviders.forEach((provider) => {
+    const option = document.createElement("option");
+    option.value = provider.id;
+    option.textContent = provider.is_default ? `${provider.name} (Default)` : provider.name;
+    el.quickApiProvider.appendChild(option);
+  });
+  el.quickApiProvider.value = state.activeApiProviderId || defaultApiProvider()?.id || "";
+}
+
+function renderExtensionApiProviderSelects() {
+  [el.imageApiProvider, el.visionApiProvider].forEach((select) => {
+    if (!select) {
+      return;
+    }
+    const current = select.value;
+    select.innerHTML = '<option value="">Use chat default</option>';
+    state.apiProviders.forEach((provider) => {
+      const option = document.createElement("option");
+      option.value = provider.id;
+      option.textContent = provider.name;
+      select.appendChild(option);
+    });
+    if ([...select.options].some((option) => option.value === current)) {
+      select.value = current;
+    }
+  });
 }
 
 function renderApiProviderList() {
@@ -1576,6 +3159,7 @@ function selectApiProvider() {
     applyApiProviderToFields(provider);
   }
   renderApiProviderList();
+  syncQuickModelControls();
 }
 
 function newApiProviderDraft() {
@@ -1586,6 +3170,7 @@ function newApiProviderDraft() {
   el.baseUrl.value = "https://openrouter.ai/api/v1";
   renderCloudModelControl("deepseek/deepseek-chat");
   el.apiKey.value = "";
+  el.apiKey.placeholder = "API key";
   el.apiProviderDefault.checked = !state.apiProviders.length;
   el.apiProviderFallback.checked = false;
   state.validatedApiProviderKey = "";
@@ -1598,7 +3183,10 @@ function setApiProviderEditor(provider) {
   el.cloudProvider.value = inferCloudProvider(provider.base_url);
   el.baseUrl.value = provider.base_url;
   renderCloudModelControl(provider.default_model);
-  el.apiKey.value = provider.api_key || "";
+  el.apiKey.value = "";
+  el.apiKey.placeholder = provider.api_key
+    ? "Saved securely. Leave blank to keep it."
+    : "API key";
   el.apiProviderDefault.checked = Boolean(provider.is_default);
   el.apiProviderFallback.checked = Boolean(provider.is_fallback);
   state.validatedApiProviderKey = "";
@@ -1646,6 +3234,7 @@ async function saveApiProvider() {
     state.activeApiProviderId = saved.id;
     state.editingApiProviderId = saved.id;
     await loadApiProviders();
+    syncQuickModelControls();
     setApiProviderStatus(`Saved ${saved.name}.`);
   } catch (error) {
     setApiProviderStatus(error.message || "Could not save provider.");
@@ -1718,6 +3307,7 @@ async function deleteApiProvider() {
     state.editingApiProviderId = null;
     state.activeApiProviderId = null;
     await loadApiProviders();
+    syncQuickModelControls();
     setApiProviderStatus("Provider deleted.");
   } catch (error) {
     setApiProviderStatus(error.message || "Could not delete provider.");
@@ -1729,7 +3319,7 @@ async function setDefaultApiProvider(provider) {
     id: provider.id,
     name: provider.name,
     base_url: provider.base_url,
-    api_key: provider.api_key || "",
+    api_key: "",
     default_model: provider.default_model,
     is_default: true,
     is_fallback: Boolean(provider.is_fallback),
@@ -1746,6 +3336,7 @@ async function setDefaultApiProvider(provider) {
     }
     state.activeApiProviderId = saved.id;
     await loadApiProviders();
+    syncQuickModelControls();
     setApiProviderStatus(`${saved.name} is now the active default.`);
   } catch (error) {
     setApiProviderStatus(error.message || "Could not set default provider.");
@@ -1759,11 +3350,38 @@ function applyActiveApiProviderToFields() {
   }
 }
 
+function syncQuickModelControls() {
+  if (!el.quickInferenceSource || !el.quickModelLabel) {
+    return;
+  }
+  const source = el.inferenceSource.value;
+  el.quickInferenceSource.value = source;
+  renderQuickApiProviderSelect();
+  const localMode = source === "local";
+  el.quickApiProvider.classList.toggle("hidden", localMode);
+  el.quickApiProvider.disabled = localMode || !state.apiProviders.length;
+  if (localMode) {
+    const status = el.sidebarModelStatus?.textContent?.trim() || "";
+    const selected = el.sidebarLocalModelPath?.selectedOptions?.[0]?.textContent || "";
+    el.quickModelLabel.textContent = status && status !== "No model loaded"
+      ? status
+      : selected || "No local model loaded";
+  } else {
+    const provider = activeApiProvider();
+    el.quickModelLabel.textContent = provider
+      ? `${provider.default_model} via ${provider.name}`
+      : `${selectedModelValue(el.cloudModelSelect, el.cloudModel) || "No model"} via manual cloud`;
+  }
+}
+
 function applyApiProviderToFields(provider) {
   el.cloudProvider.value = inferCloudProvider(provider.base_url);
   el.baseUrl.value = provider.base_url;
   renderCloudModelControl(provider.default_model);
-  el.apiKey.value = provider.api_key || "";
+  el.apiKey.value = "";
+  el.apiKey.placeholder = provider.api_key
+    ? "Saved securely. Leave blank to keep it."
+    : "API key";
   el.apiProviderDefault.checked = Boolean(provider.is_default);
   el.apiProviderFallback.checked = Boolean(provider.is_fallback);
 }
@@ -1773,6 +3391,52 @@ function activeApiProvider() {
     state.apiProviders.find((provider) => provider.id === state.activeApiProviderId) ||
     defaultApiProvider()
   );
+}
+
+function extensionApiProvider(kind) {
+  const id = kind === "image" ? el.imageApiProvider?.value : el.visionApiProvider?.value;
+  return state.apiProviders.find((provider) => provider.id === id) || activeApiProvider();
+}
+
+function applyExtensionApiProfileDefaults(kind) {
+  const provider = extensionApiProvider(kind);
+  if (!provider) {
+    return;
+  }
+  const inferred = inferCloudProvider(provider.base_url);
+  const baseUrl = provider.base_url.replace(/\/$/, "");
+  if (kind === "image") {
+    if (["openai", "openrouter", "custom"].includes(inferred)) {
+      el.imageProvider.value = inferred === "custom" ? "openai" : inferred;
+    }
+    if (!el.imageModel.value.trim()) {
+      el.imageModel.value = provider.default_model || "";
+    }
+    el.imageEndpoint.value = `${baseUrl}/images/generations`;
+    return;
+  }
+  if (["openai", "openrouter", "custom"].includes(inferred)) {
+    el.visionProvider.value = inferred;
+  }
+  renderVisionModelControl(provider.default_model || "");
+  el.visionEndpoint.value = `${baseUrl}/chat/completions`;
+}
+
+function extensionEndpoint(kind, provider = extensionApiProvider(kind)) {
+  const field = kind === "image" ? el.imageEndpoint : el.visionEndpoint;
+  const existing = field?.value?.trim() || "";
+  if (existing) {
+    return existing;
+  }
+  if (!provider?.base_url) {
+    return "";
+  }
+  const suffix = kind === "image" ? "/images/generations" : "/chat/completions";
+  const derived = `${provider.base_url.replace(/\/$/, "")}${suffix}`;
+  if (field) {
+    field.value = derived;
+  }
+  return derived;
 }
 
 function defaultApiProvider() {
@@ -1996,6 +3660,7 @@ function cancelStartNewChat() {
 
 function beginFreshChatBranch() {
   state.activeChatId = null;
+  resetChatSettingsToGlobal();
   if (el.chatHistorySelect) {
     el.chatHistorySelect.value = "";
   }
@@ -2028,12 +3693,252 @@ async function loadSelectedChat() {
 
 function loadChatSession(session) {
   state.activeChatId = session.id;
+  applyChatSettingsFromSession(session);
   state.messages = normalizeSessionMessages(session.messages || []);
   state.selectedMessageIds.clear();
   state.editingMessageId = null;
   renderSessionMessages();
   renderChatHistorySelect();
   renderChatHistoryShelf();
+}
+
+function resetChatSettingsToGlobal() {
+  state.chatSettings = {
+    persona_id: null,
+    lorebook_id: null,
+    lorebook_enabled: null,
+    chat_summary: "",
+    auto_summary_enabled: false,
+    summary_message_count: 10,
+  };
+}
+
+function applyChatSettingsFromSession(session = {}) {
+  state.chatSettings = {
+    persona_id: session.persona_id || null,
+    lorebook_id: session.lorebook_id || null,
+    lorebook_enabled:
+      session.lorebook_enabled === null || session.lorebook_enabled === undefined
+        ? null
+        : Boolean(session.lorebook_enabled),
+    chat_summary: session.chat_summary || "",
+    auto_summary_enabled: Boolean(session.auto_summary_enabled),
+    summary_message_count: Number(session.summary_message_count || 10),
+  };
+}
+
+function effectivePersonaId() {
+  return state.chatSettings.persona_id || state.activePersona?.id || null;
+}
+
+function effectiveLorebookId() {
+  return state.chatSettings.lorebook_id || state.activeLorebook?.id || null;
+}
+
+function effectiveLorebookEnabled() {
+  if (state.chatSettings.lorebook_enabled !== null) {
+    return Boolean(state.chatSettings.lorebook_enabled && effectiveLorebookId());
+  }
+  return Boolean(state.activeLorebook?.id && state.lorebookEnabled);
+}
+
+function effectiveChatSummary() {
+  return state.chatSettings.chat_summary || "";
+}
+
+function openChatSettings() {
+  renderChatSettingsControls();
+  openModal(el.chatSettingsModal, el.chatPersonaSelect);
+}
+
+function renderChatSettingsControls() {
+  el.chatPersonaSelect.innerHTML = "";
+  const globalPersona = document.createElement("option");
+  globalPersona.value = "";
+  globalPersona.textContent = state.activePersona?.name
+    ? `Use global default (${state.activePersona.name})`
+    : "Use global default (No Persona)";
+  el.chatPersonaSelect.appendChild(globalPersona);
+  state.personas.forEach((persona) => {
+    const option = document.createElement("option");
+    option.value = persona.id;
+    option.textContent = persona.is_default ? `${persona.name} (Default)` : persona.name;
+    el.chatPersonaSelect.appendChild(option);
+  });
+  el.chatPersonaSelect.value = state.chatSettings.persona_id || "";
+
+  el.chatLorebookSelect.innerHTML = "";
+  const globalLorebook = document.createElement("option");
+  globalLorebook.value = "";
+  globalLorebook.textContent = state.activeLorebook?.name
+    ? `Use global default (${state.activeLorebook.name})`
+    : "Use global default (No Lorebook)";
+  el.chatLorebookSelect.appendChild(globalLorebook);
+  state.lorebooks.forEach((lorebook) => {
+    const option = document.createElement("option");
+    option.value = lorebook.id;
+    option.textContent = lorebook.active ? lorebook.name : `${lorebook.name} (Disabled)`;
+    el.chatLorebookSelect.appendChild(option);
+  });
+  el.chatLorebookSelect.value = state.chatSettings.lorebook_id || "";
+  el.chatLorebookEnabled.checked =
+    state.chatSettings.lorebook_enabled === null
+      ? Boolean(state.activeLorebook?.id && state.lorebookEnabled)
+      : Boolean(state.chatSettings.lorebook_enabled);
+  el.chatSummaryText.value = state.chatSettings.chat_summary || "";
+  el.chatAutoSummaryEnabled.checked = Boolean(state.chatSettings.auto_summary_enabled);
+  el.chatSummaryCount.value = String(state.chatSettings.summary_message_count || 10);
+  renderChatGallery();
+  el.chatSettingsStatus.textContent = state.activeChatId
+    ? "These overrides will be saved with this timeline."
+    : "These overrides will be saved when this timeline is first written.";
+}
+
+async function saveChatSettings() {
+  state.chatSettings = {
+    persona_id: el.chatPersonaSelect.value || null,
+    lorebook_id: el.chatLorebookSelect.value || null,
+    lorebook_enabled: el.chatLorebookEnabled.checked,
+    chat_summary: el.chatSummaryText.value.trim(),
+    auto_summary_enabled: el.chatAutoSummaryEnabled.checked,
+    summary_message_count: Number(el.chatSummaryCount.value) || 10,
+  };
+  const saved = await persistActiveChat();
+  el.chatSettingsStatus.textContent = saved
+    ? "Chat settings applied."
+    : "Chat settings staged for the next saved message.";
+  window.setTimeout(() => closeModal(el.chatSettingsModal), 500);
+}
+
+async function autoSummarizeChat(options = {}) {
+  const silent = Boolean(options.silent);
+  const count = Math.max(1, Math.min(Number(el.chatSummaryCount.value) || 10, 100));
+  const sourceMessages = serializeMessagesForBackend(state.messages).slice(-count);
+  if (!sourceMessages.length) {
+    if (!silent) {
+      el.chatSettingsStatus.textContent = "No messages available to summarize.";
+    }
+    return;
+  }
+  if (!silent) {
+    el.autoSummarizeChat.disabled = true;
+    el.chatSettingsStatus.textContent = `Summarizing the last ${sourceMessages.length} messages.`;
+  }
+  try {
+    const source = el.inferenceSource.value;
+    const body = {
+      source,
+      messages: sourceMessages,
+      count,
+      local: {
+        template: el.promptTemplate.value,
+      },
+      max_tokens: 700,
+    };
+    if (source === "cloud") {
+      const provider = activeApiProvider();
+      body.cloud = {
+        provider: provider ? inferCloudProvider(provider.base_url) : el.cloudProvider.value,
+        base_url: provider?.base_url || el.baseUrl.value,
+        model: provider?.default_model || selectedModelValue(el.cloudModelSelect, el.cloudModel),
+        api_key: provider ? "" : el.apiKey.value,
+      };
+      body.api_provider_id = provider?.id || null;
+    }
+    const response = await fetch("/api/chat/summary", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload.detail || "Auto-summary failed.");
+    }
+    el.chatSummaryText.value = payload.summary || "";
+    state.chatSettings.chat_summary = el.chatSummaryText.value.trim();
+    state.chatSettings.summary_message_count = count;
+    if (!silent) {
+      el.chatSettingsStatus.textContent = `Summary updated from ${payload.message_count || sourceMessages.length} messages.`;
+    }
+  } catch (error) {
+    if (!silent) {
+      el.chatSettingsStatus.textContent = error.message || "Auto-summary failed.";
+    } else {
+      console.warn("Auto-summary failed:", error);
+    }
+  } finally {
+    if (!silent) {
+      el.autoSummarizeChat.disabled = false;
+    }
+  }
+}
+
+async function maybeAutoSummarizeChat() {
+  if (!state.chatSettings.auto_summary_enabled) {
+    return;
+  }
+  await autoSummarizeChat({ silent: true });
+  await persistActiveChat();
+}
+
+async function clearChatSettings() {
+  resetChatSettingsToGlobal();
+  renderChatSettingsControls();
+  const saved = await persistActiveChat();
+  el.chatSettingsStatus.textContent = saved
+    ? "This chat now follows the global persona and lorebook."
+    : "This chat will use global defaults when it is saved.";
+}
+
+function renderChatGallery() {
+  if (!el.chatGalleryGrid) {
+    return;
+  }
+  const images = chatGalleryImages();
+  el.chatGalleryGrid.innerHTML = "";
+  el.chatGalleryCount.textContent = String(images.length);
+  if (!images.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty-state compact-empty";
+    empty.textContent = "Images sent in this timeline appear here.";
+    el.chatGalleryGrid.appendChild(empty);
+    return;
+  }
+  images.forEach((item) => {
+    const link = document.createElement("a");
+    link.className = "chat-gallery-item";
+    link.href = item.url;
+    link.target = "_blank";
+    link.rel = "noreferrer noopener";
+
+    const img = document.createElement("img");
+    img.src = item.url;
+    img.alt = item.alt || "Chat image";
+    img.loading = "lazy";
+
+    const label = document.createElement("span");
+    label.textContent = item.alt || "Image";
+    link.append(img, label);
+    el.chatGalleryGrid.appendChild(link);
+  });
+}
+
+function chatGalleryImages() {
+  const seen = new Set();
+  const images = [];
+  const pattern = /!\[([^\]]*)\]\((\/api\/assets\/[^)\s]+)\)/g;
+  state.messages.forEach((message) => {
+    let match;
+    while ((match = pattern.exec(message.content || ""))) {
+      const [, alt, url] = match;
+      if (seen.has(url)) {
+        continue;
+      }
+      seen.add(url);
+      images.push({ alt, url });
+    }
+  });
+  return images;
 }
 
 async function deleteActiveChat() {
@@ -2060,8 +3965,13 @@ function exportChatLogs() {
     chat_id: state.activeChatId,
     character_id: state.activeCharacter?.id || null,
     character_name: characterName(),
-    persona_id: state.activePersona?.id || null,
+    persona_id: effectivePersonaId(),
     persona_name: personaName(),
+    lorebook_id: effectiveLorebookId(),
+    lorebook_enabled: effectiveLorebookEnabled(),
+    chat_summary: effectiveChatSummary(),
+    auto_summary_enabled: Boolean(state.chatSettings.auto_summary_enabled),
+    summary_message_count: state.chatSettings.summary_message_count || 10,
     exported_at: new Date().toISOString(),
     messages: state.messages,
   };
@@ -2143,6 +4053,7 @@ function renderSessionMessages() {
   state.messages.forEach((message, index) => {
     appendMessage(message, index);
   });
+  renderChatGallery();
   scrollChatToBottom();
 }
 
@@ -2339,6 +4250,8 @@ function setCharacterEditor(character) {
   const profile = normalizeCharacter(character);
   state.editingCharacterId = profile.id;
   el.characterEditorMode.textContent = profile.id ? "Saved" : "Draft";
+  el.saveCharacter.textContent = profile.id ? "Save Changes" : "Create Card";
+  el.useCharacter.textContent = profile.id ? "Start Chat" : "Use Draft";
   el.characterEditorName.value = profile.name;
   el.characterEditorAvatarUrl.value = profile.avatar_url || profile.avatar_file || "";
   el.characterEditorBackgroundUrl.value =
@@ -2673,7 +4586,8 @@ function setPersonaEditor(persona) {
   el.personaEditorName.value = profile.name;
   el.personaEditorAvatarUrl.value = profile.avatar_url || profile.avatar_file || "";
   el.personaEditorDescription.value = profile.description || "";
-  el.personaDefault.checked = Boolean(profile.is_default);
+  el.personaDefault.checked = Boolean(profile.is_default || (!profile.id && !state.personas.length));
+  el.savePersona.textContent = profile.id ? "Save Changes" : "Create Persona";
   el.personaAvatarFile.value = "";
   updatePersonaEditorAvatar();
 }
@@ -2828,12 +4742,13 @@ function renderLorebookList() {
   }
 
   state.lorebooks.forEach((lorebook) => {
-    const button = document.createElement("button");
-    button.className = "profile-row";
+    const button = document.createElement("div");
+    button.className = "profile-row profile-row-with-action";
     if (state.activeLorebook?.id === lorebook.id && state.lorebookEnabled) {
       button.classList.add("active");
     }
-    button.type = "button";
+    button.tabIndex = 0;
+    button.role = "button";
 
     const avatar = document.createElement("div");
     avatar.className = "avatar";
@@ -2850,14 +4765,63 @@ function renderLorebookList() {
     }`;
     copy.append(name, meta);
 
-    button.append(avatar, copy);
+    const toggleLabel = document.createElement("label");
+    toggleLabel.className = "mini-switch";
+    toggleLabel.title = lorebook.active ? "Disable lorebook" : "Enable lorebook";
+    const toggle = document.createElement("input");
+    toggle.type = "checkbox";
+    toggle.checked = Boolean(lorebook.active);
+    const track = document.createElement("span");
+    toggleLabel.append(toggle, track);
+    toggle.addEventListener("click", (event) => event.stopPropagation());
+    toggle.addEventListener("change", async (event) => {
+      event.stopPropagation();
+      await toggleLorebookActive(lorebook, toggle.checked);
+    });
+
+    button.append(avatar, copy, toggleLabel);
     button.addEventListener("click", () => {
       setLorebookEditor(lorebook);
       useLorebook(lorebook);
       renderLorebookList();
     });
+    button.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        button.click();
+      }
+    });
     el.lorebookList.appendChild(button);
   });
+}
+
+async function toggleLorebookActive(lorebook, active) {
+  try {
+    const response = await fetch("/api/lorebooks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: lorebook.id,
+        name: lorebook.name,
+        active,
+        entries: lorebook.entries || [],
+      }),
+    });
+    const saved = await response.json();
+    if (!response.ok) {
+      throw new Error(saved.detail || "Could not update lorebook.");
+    }
+    if (state.activeLorebook?.id === saved.id) {
+      state.activeLorebook = saved;
+      state.lorebookEnabled = Boolean(saved.active);
+      el.lorebookActive.checked = Boolean(saved.active);
+      updateLorebookStatus();
+    }
+    await loadLorebooks();
+  } catch (error) {
+    el.lorebookSaveStatus.textContent = error.message || "Could not update lorebook.";
+    await loadLorebooks();
+  }
 }
 
 function renderLorebookEmpty(message) {
@@ -2874,6 +4838,7 @@ function newLorebookDraft() {
   el.lorebookActive.checked = false;
   el.loreEntryList.innerHTML = "";
   addLoreEntryRow();
+  el.saveLorebook.textContent = "Create Lorebook";
   el.lorebookSaveStatus.textContent = "New lorebook draft.";
 }
 
@@ -2881,6 +4846,7 @@ function setLorebookEditor(lorebook) {
   state.editingLorebookId = lorebook.id;
   el.lorebookName.value = lorebook.name || "Default Lorebook";
   el.lorebookActive.checked = Boolean(lorebook.active);
+  el.saveLorebook.textContent = lorebook.id ? "Save Changes" : "Create Lorebook";
   el.loreEntryList.innerHTML = "";
   if (lorebook.entries?.length) {
     lorebook.entries.forEach((entry) => addLoreEntryRow(entry));
@@ -3250,6 +5216,22 @@ function statusLabel(status) {
   return "Downloading model";
 }
 
+function quickGenerateImageFromComposer() {
+  const prompt = el.messageInput.value.trim();
+  if (prompt) {
+    el.imagePrompt.value = prompt;
+    generateImageFromExtension();
+    return;
+  }
+  state.extensionsOpen = true;
+  el.extensionsDrawer.classList.remove("hidden");
+  el.toggleExtensions.setAttribute("aria-expanded", "true");
+  el.toggleExtensions.classList.add("is-active");
+  el.imagePrompt.focus();
+  el.imageGenerationStatus.textContent = "Type an image prompt here, or write it in the chat box first.";
+  window.setTimeout(scrollChatToBottom, 120);
+}
+
 async function generateImageFromExtension() {
   const prompt = el.imagePrompt.value.trim();
   if (!prompt || state.imageGenerating) {
@@ -3265,14 +5247,16 @@ async function generateImageFromExtension() {
   el.imageGenerationStatus.textContent = "Submitting image request.";
 
   try {
+    const provider = extensionApiProvider("image");
     const response = await fetch("/api/extensions/image/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         provider: el.imageProvider.value,
-        endpoint: el.imageEndpoint.value.trim(),
-        api_key: activeApiProvider()?.api_key || "",
-        model: el.imageModel.value.trim(),
+        api_provider_id: el.imageApiProvider.value || provider?.id || null,
+        endpoint: extensionEndpoint("image", provider),
+        api_key: "",
+        model: el.imageModel.value.trim() || provider?.default_model || "",
         prompt,
         negative_prompt: el.imageNegativePrompt.value.trim(),
         aspect_ratio: el.imageAspectRatio.value,
@@ -3314,7 +5298,7 @@ async function appendExtensionMessage(content) {
   await persistActiveChat();
 }
 
-async function handleImageAttachment(file) {
+async function stageImageAttachment(file, target = "chat") {
   if (!file) {
     return;
   }
@@ -3323,133 +5307,217 @@ async function handleImageAttachment(file) {
     return;
   }
 
-  el.extensionStatus.textContent = "Captioning";
-  el.visionCaptionStatus.textContent = `Reading ${file.name}.`;
-
   try {
     const dataUrl = await readFileAsDataUrl(file);
-    state.visionAttachment = {
+    setPendingImage(target, {
       filename: file.name,
+      mime_type: file.type,
+      size: file.size,
       dataUrl,
-      caption: "Captioning in progress...",
-    };
-    renderVisionAttachmentPreview();
-
-    const response = await fetch("/api/extensions/vision/caption", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        provider: el.visionProvider.value,
-        endpoint: el.visionEndpoint.value.trim(),
-        model: selectedModelValue(el.visionModelSelect, el.visionModel),
-        api_key: activeApiProvider()?.api_key || "",
-        filename: file.name,
-        data_url: dataUrl,
-      }),
+      caption: "Ready to send with your message.",
+      status: "staged",
     });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(payload.detail || "Vision caption request failed");
-    }
-
-    const caption = payload.caption || `The user attached ${file.name}.`;
-    state.visionContext = `Attached image "${file.name}": ${caption}`;
-    state.visionAttachment = {
-      filename: file.name,
-      dataUrl,
-      caption,
-      status: payload.status || "completed",
-    };
-    renderVisionAttachmentPreview();
-    el.extensionStatus.textContent = payload.status === "error" ? "Ready" : "Ready";
+    renderPendingImagePreview(target);
     el.visionCaptionStatus.textContent =
-      payload.message || "Image context is active for the next generations.";
+      target === "workspace"
+        ? "Workspace image staged. It will be captioned when the agent runs."
+        : "Image staged in chat. It will be captioned when you press Send.";
   } catch (error) {
-    state.visionContext = "";
     el.extensionStatus.textContent = "Error";
-    el.visionCaptionStatus.textContent = error.message;
-    renderVisionAttachmentPreview();
+    el.visionCaptionStatus.textContent = error.message || "Could not stage image.";
   }
 }
 
-function renderVisionAttachmentPreview() {
-  el.visionAttachmentPreview.innerHTML = "";
-  if (!state.visionAttachment) {
-    el.visionAttachmentPreview.classList.add("hidden");
+function setPendingImage(target, attachment) {
+  if (target === "workspace") {
+    state.workspacePendingImage = attachment;
+    return;
+  }
+  state.chatPendingImage = attachment;
+  state.visionAttachment = attachment;
+}
+
+function pendingImage(target = "chat") {
+  return target === "workspace" ? state.workspacePendingImage : state.chatPendingImage;
+}
+
+function pendingPreviewElement(target = "chat") {
+  return target === "workspace" ? el.workspaceAttachmentPreview : el.chatAttachmentPreview;
+}
+
+function renderPendingImagePreview(target = "chat") {
+  const preview = pendingPreviewElement(target);
+  const attachment = pendingImage(target);
+  if (!preview) {
+    return;
+  }
+  preview.innerHTML = "";
+  if (!attachment) {
+    preview.classList.add("hidden");
     return;
   }
 
   const image = document.createElement("img");
-  image.src = state.visionAttachment.dataUrl;
-  image.alt = state.visionAttachment.filename;
+  image.src = attachment.dataUrl || attachment.assetUrl || "";
+  image.alt = attachment.filename;
 
   const copy = document.createElement("div");
   copy.className = "attachment-copy";
   const title = document.createElement("strong");
-  title.textContent = state.visionAttachment.filename;
+  title.textContent = attachment.filename;
   const caption = document.createElement("p");
-  caption.textContent = state.visionAttachment.caption || "No caption yet.";
+  caption.textContent = attachment.caption || "Ready to send.";
   copy.append(title, caption);
 
   const clear = document.createElement("button");
   clear.className = "message-action";
   clear.type = "button";
-  clear.textContent = "Clear";
-  clear.addEventListener("click", clearVisionContext);
+  clear.textContent = "Remove";
+  clear.addEventListener("click", () => clearPendingImage(target));
 
-  el.visionAttachmentPreview.append(image, copy, clear);
-  el.visionAttachmentPreview.classList.remove("hidden");
+  preview.append(image, copy, clear);
+  preview.classList.remove("hidden");
 }
 
-function clearVisionContext() {
-  state.visionContext = "";
-  state.visionAttachment = null;
-  renderVisionAttachmentPreview();
-  el.visionCaptionStatus.textContent = "Visual context cleared.";
+function clearPendingImage(target = "chat") {
+  if (target === "workspace") {
+    state.workspacePendingImage = null;
+  } else {
+    state.chatPendingImage = null;
+    state.visionAttachment = null;
+  }
+  renderPendingImagePreview(target);
+  el.visionCaptionStatus.textContent = "Visual attachment cleared.";
+}
+
+async function prepareImageForSend(target = "chat", userText = "") {
+  const attachment = pendingImage(target);
+  if (!attachment) {
+    return { messageSuffix: "", visionContext: "" };
+  }
+
+  attachment.caption = "Uploading image to local assets...";
+  renderPendingImagePreview(target);
+  const asset = await saveDataUrlAsset(attachment.filename, attachment.dataUrl);
+  attachment.assetUrl = asset.url;
+
+  attachment.caption = "Captioning image with selected vision profile...";
+  renderPendingImagePreview(target);
+  const caption = await captionAttachmentImage(attachment, userText);
+  attachment.caption = caption;
+  attachment.status = "completed";
+  renderPendingImagePreview(target);
+
+  const visionContext = [
+    `Attached image "${attachment.filename}": ${caption}`,
+    userText ? `User message sent with the image: ${userText}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+  return {
+    messageSuffix: `![${attachment.filename}](${asset.url})`,
+    visionContext,
+    assetUrl: asset.url,
+    caption,
+  };
+}
+
+async function saveDataUrlAsset(filename, dataUrl) {
+  const response = await fetch("/api/assets", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ filename, data_url: dataUrl }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload.detail || "Could not store image asset.");
+  }
+  return payload;
+}
+
+async function captionAttachmentImage(attachment, userText = "") {
+  const provider = extensionApiProvider("vision");
+  const prompt = [
+    el.visionPrompt.value.trim(),
+    userText ? `The user's accompanying message is: "${userText}"` : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+  const response = await fetch("/api/extensions/vision/caption", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      provider: el.visionProvider.value,
+      api_provider_id: el.visionApiProvider.value || provider?.id || null,
+      endpoint: extensionEndpoint("vision", provider),
+      model: selectedModelValue(el.visionModelSelect, el.visionModel) || provider?.default_model || "",
+      api_key: "",
+      prompt,
+      filename: attachment.filename,
+      data_url: attachment.dataUrl,
+    }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload.detail || "Vision caption request failed.");
+  }
+  el.visionCaptionStatus.textContent =
+    payload.message || "Image caption generated and injected into this turn.";
+  return payload.caption || `The user attached ${attachment.filename}.`;
 }
 
 async function sendMessage(event) {
   event.preventDefault();
   const content = el.messageInput.value.trim();
-  if (!content || state.streaming) {
+  const hasImage = Boolean(state.chatPendingImage);
+  if (state.streaming) {
     return;
   }
-  if (!state.activeCharacter?.id) {
-    renderNoCharacterPlaceholder("Select or import a character card before sending a message.");
+  if (!content && !hasImage) {
+    const assistantId = latestAssistantMessageId();
+    if (assistantId) {
+      await continueAssistantMessage(assistantId);
+    }
     return;
   }
-
-  el.messageInput.value = "";
-  autosizeComposer();
-  const userMessage = {
-    id: createMessageId(),
-    role: "user",
-    content,
-    timestamp: new Date().toISOString(),
-    folded: false,
-    hidden: false,
-  };
-  state.messages.push(userMessage);
-  appendMessage(userMessage, state.messages.length - 1);
-
-  const assistantBubble = appendThinkingMessage(characterName());
-  state.activeAssistantText = "";
-  state.activeWriter = null;
 
   setBusy(true);
   state.streaming = true;
+  let assistantBubble = null;
+  let transientVisionContext = "";
 
   try {
+    const imagePayload = await prepareImageForSend("chat", content);
+    transientVisionContext = imagePayload.visionContext;
+    const visibleContent = [content, imagePayload.messageSuffix].filter(Boolean).join("\n\n");
+
+    el.messageInput.value = "";
+    autosizeComposer();
+    const userMessage = {
+      id: createMessageId(),
+      role: "user",
+      content: visibleContent,
+      timestamp: new Date().toISOString(),
+      folded: false,
+      hidden: false,
+    };
+    state.messages.push(userMessage);
+    appendMessage(userMessage, state.messages.length - 1);
+
+    assistantBubble = appendThinkingMessage(characterName());
+    state.activeAssistantText = "";
+    state.activeWriter = null;
+
     if (el.textStreaming.checked) {
       state.activeWriter = new Typewriter((text) => {
         state.activeAssistantText = text;
         assistantBubble.innerHTML = window.renderMarkdown(text);
         scrollChatToBottom();
       });
-      await streamAssistantResponse(buildChatPayload());
+      await streamAssistantResponse(buildChatPayload({ visionContext: transientVisionContext }));
       state.activeWriter.flush();
     } else {
-      const result = await completeAssistantResponse(buildChatPayload());
+      const result = await completeAssistantResponse(buildChatPayload({ visionContext: transientVisionContext }));
       state.activeChatId = result.chat_id || state.activeChatId;
       state.activeAssistantText = result.text || "";
       cleanupThinkingIndicator();
@@ -3468,6 +5536,7 @@ async function sendMessage(event) {
         hidden: false,
       });
       renderSessionMessages();
+      await maybeAutoSummarizeChat();
     } else if (state.thinkingActive) {
       removeThinkingIndicator();
     }
@@ -3477,8 +5546,22 @@ async function sendMessage(event) {
     if (state.activeWriter) {
       state.activeWriter.flush();
     }
-    assistantBubble.innerHTML = window.renderMarkdown(`**Error:** ${error.message}`);
+    if (assistantBubble) {
+      assistantBubble.innerHTML = window.renderMarkdown(`**Error:** ${error.message}`);
+    } else {
+      appendMessage(
+        {
+          id: createMessageId(),
+          role: "assistant",
+          content: `**Error:** ${error.message}`,
+          timestamp: new Date().toISOString(),
+        },
+        state.messages.length
+      );
+    }
   } finally {
+    clearPendingImage("chat");
+    state.visionContext = "";
     state.activeWriter = null;
     state.thinkingRow = null;
     state.thinkingBody = null;
@@ -3487,6 +5570,15 @@ async function sendMessage(event) {
     setBusy(false);
     el.messageInput.focus();
   }
+}
+
+function latestAssistantMessageId() {
+  for (let index = state.messages.length - 1; index >= 0; index -= 1) {
+    if (state.messages[index]?.role === "assistant") {
+      return state.messages[index].id;
+    }
+  }
+  return null;
 }
 
 async function completeAssistantResponse(payload) {
@@ -3563,10 +5655,13 @@ function buildChatPayload(options = {}) {
     messages: serializeMessagesForBackend(messages),
     system_prompt: options.systemPrompt === undefined ? el.systemPrompt.value : options.systemPrompt,
     character_id: state.activeCharacter?.id || null,
-    persona_id: state.activePersona?.id || null,
-    lorebook_id: state.activeLorebook?.id || null,
-    lorebook_enabled: Boolean(state.activeLorebook?.id && state.lorebookEnabled),
-    vision_context: state.visionContext || "",
+    persona_id: effectivePersonaId(),
+    lorebook_id: effectiveLorebookId(),
+    lorebook_enabled: effectiveLorebookEnabled(),
+    chat_summary: effectiveChatSummary(),
+    auto_summary_enabled: Boolean(state.chatSettings.auto_summary_enabled),
+    summary_message_count: state.chatSettings.summary_message_count || 10,
+    vision_context: options.visionContext === undefined ? state.visionContext || "" : options.visionContext,
     local: {
       template: el.promptTemplate.value,
     },
@@ -3582,7 +5677,7 @@ function buildChatPayload(options = {}) {
       provider: provider ? inferCloudProvider(provider.base_url) : el.cloudProvider.value,
       base_url: provider?.base_url || el.baseUrl.value,
       model: provider?.default_model || manualModel,
-      api_key: provider?.api_key || el.apiKey.value,
+      api_key: provider ? "" : el.apiKey.value,
     };
     payload.api_provider_id = provider?.id || null;
   }
@@ -4153,6 +6248,12 @@ async function persistActiveChat() {
       body: JSON.stringify({
         id: state.activeChatId,
         character_id: state.activeCharacter?.id || null,
+        persona_id: effectivePersonaId(),
+        lorebook_id: effectiveLorebookId(),
+        lorebook_enabled: effectiveLorebookEnabled(),
+        chat_summary: effectiveChatSummary(),
+        auto_summary_enabled: Boolean(state.chatSettings.auto_summary_enabled),
+        summary_message_count: state.chatSettings.summary_message_count || 10,
         messages: serializeMessagesForBackend(state.messages),
       }),
     });
@@ -4382,31 +6483,56 @@ function renderNoCharacterPlaceholder(message) {
   renderChatHistoryShelf();
   el.chatMessages.innerHTML = "";
   const empty = document.createElement("div");
-  empty.className = "workspace-placeholder";
+  empty.className = "workspace-placeholder home-hub";
   const title = document.createElement("h3");
-  title.textContent = "No Character Selected";
+  title.textContent = "What are we building?";
   const copy = document.createElement("p");
   copy.textContent =
     message ||
-    "No Character Selected. Please create a new identity or import a community card below to begin your chat session.";
+    "Start a general chat, open the agent workspace, or attach a character/persona when you want roleplay context.";
+  const grid = document.createElement("div");
+  grid.className = "home-hub-grid";
+  [
+    ["Workspace", "Build, inspect, run, and fix files inside ./workspace.", openWorkspace],
+    ["Characters", "Import or create roleplay cards and avatar-backed chats.", openCharacterLibrary],
+    ["Personas", "Swap how the model understands you across sessions.", openPersonaRegistry],
+    ["Models", "Load GGUF files or search the Hugging Face marketplace.", openModelMarket],
+    ["Lorebooks", "Inject world info when keywords appear in the chat.", openLorebookEditor],
+  ].forEach(([heading, detail, action]) => {
+    const card = document.createElement("button");
+    card.className = "home-hub-card";
+    card.type = "button";
+    const strong = document.createElement("strong");
+    strong.textContent = heading;
+    const span = document.createElement("span");
+    span.textContent = detail;
+    card.append(strong, span);
+    card.addEventListener("click", action);
+    grid.appendChild(card);
+  });
   const actions = document.createElement("div");
   actions.className = "button-row compact-actions";
+  const workspace = document.createElement("button");
+  workspace.className = "primary-button";
+  workspace.type = "button";
+  workspace.textContent = "Launch Workspace";
+  workspace.addEventListener("click", openWorkspace);
   const create = document.createElement("button");
-  create.className = "primary-button";
+  create.className = "secondary-button";
   create.type = "button";
-  create.textContent = "Create / Import Character";
+  create.textContent = "Characters";
   create.addEventListener("click", openCharacterLibrary);
-  actions.appendChild(create);
-  empty.append(title, copy, actions);
+  actions.append(workspace, create);
+  empty.append(title, copy, grid, actions);
   el.chatMessages.appendChild(empty);
-  el.chatTitle.textContent = "No Character Selected";
-  el.chatSubtitle.textContent = "Create or import a card to begin";
+  el.chatTitle.textContent = "SweetrollLM";
+  el.chatSubtitle.textContent = "General chat ready. Workspace, characters, and personas are one click away.";
   updateChatBackground();
 }
 
 function updateCharacterPreview() {
   const hasCharacter = Boolean(state.activeCharacter?.id);
-  el.chatTitle.textContent = hasCharacter ? characterName() : "No Character Selected";
+  el.chatTitle.textContent = hasCharacter ? characterName() : "SweetrollLM";
   renderAvatar(el.characterAvatarPreview, characterAvatar(), characterName());
   updateChatBackground();
 }
@@ -4519,12 +6645,18 @@ function characterAvatar() {
   return el.characterAvatar.value.trim();
 }
 
+function effectivePersonaProfile() {
+  const personaId = effectivePersonaId();
+  return state.personas.find((persona) => persona.id === personaId) || state.activePersona || null;
+}
+
 function personaName() {
-  return state.activePersona?.name || "You";
+  return effectivePersonaProfile()?.name || "You";
 }
 
 function personaAvatar() {
-  return state.activePersona?.avatar_file || state.activePersona?.avatar_url || "";
+  const persona = effectivePersonaProfile();
+  return persona?.avatar_file || persona?.avatar_url || "";
 }
 
 function initials(name) {
@@ -4550,6 +6682,7 @@ function setModelStatus(message, loaded) {
   el.activeModelDot.classList.toggle("loaded", Boolean(loaded));
   el.sidebarModelStatus.textContent = message;
   el.sidebarActiveModelDot.classList.toggle("loaded", Boolean(loaded));
+  syncQuickModelControls();
 }
 
 function setSidebarModelError(message) {
@@ -4568,6 +6701,7 @@ function renderModelStatus(status) {
   }
   const filename = status.model_path.split(/[\\/]/).pop();
   setModelStatus(`${filename} loaded (${status.template})`, true);
+  syncQuickModelControls();
 }
 
 function showModelDiagnostic(status) {

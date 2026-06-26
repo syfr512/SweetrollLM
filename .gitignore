@@ -5,6 +5,7 @@ __pycache__/
 venv/
 .env
 .env.*
+sweetroll_lm/.env
 .server.*.log
 
 *.gguf
@@ -15,6 +16,8 @@ storage/models/*
 !storage/models/.gitkeep
 storage/chats/*
 !storage/chats/.gitkeep
+storage/workspace_chats/*
+!storage/workspace_chats/.gitkeep
 storage/characters/*
 !storage/characters/.gitkeep
 storage/personas/*
@@ -29,3 +32,5 @@ storage/extensions/*
 !storage/extensions/.gitkeep
 storage/logs/*
 !storage/logs/.gitkeep
+workspace/*
+!workspace/.gitkeep

@@ -239,8 +239,20 @@ class LocalLlamaEngine:
         try:
             from llama_cpp import Llama
         except (ModuleNotFoundError, ImportError) as exc:
+            if not settings.native_import_fallback_enabled:
+                return self._record_load_error(
+                    "llama_cpp_missing",
+                    "Native llama-cpp-python is not installed in this Python "
+                    "environment. Install it with `pip install llama-cpp-python` "
+                    "to use native GGUF loading on AVX2-capable machines, or set "
+                    "SWEETROLL_LM_NATIVE_IMPORT_FALLBACK_ENABLED=true to allow "
+                    "the managed KoboldCPP old-PC worker when the Python package "
+                    "is absent.",
+                    exc,
+                )
             logger.info(
-                "llama-cpp-python is unavailable, falling back to embedded worker..."
+                "llama-cpp-python is unavailable and import fallback is enabled; "
+                "falling back to embedded worker..."
             )
             async with self._lock:
                 await asyncio.to_thread(self._drop_loaded_model)
@@ -515,6 +527,21 @@ def _classify_native_load_error(exc: Exception) -> tuple[str, str]:
 
 
 def _diagnostic_for_error(code: str) -> dict[str, str]:
+    if code == "llama_cpp_missing":
+        return {
+            "title": "Native llama-cpp-python Missing",
+            "message": (
+                "SweetrollLM is configured to prefer native GGUF execution, but "
+                "the llama-cpp-python package is not installed in this Python "
+                "environment."
+            ),
+            "solution": (
+                "Run install.bat or activate the same venv and install "
+                "llama-cpp-python. To intentionally use the embedded old-PC "
+                "worker when the package is absent, set "
+                "SWEETROLL_LM_NATIVE_IMPORT_FALLBACK_ENABLED=true."
+            ),
+        }
     if code in {
         "hardware_instruction_mismatch",
         "native_binary_load_error",
